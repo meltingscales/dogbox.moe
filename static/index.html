@@ -444,6 +444,10 @@
 
             // Make available globally for non-module scripts
             window.noblePostQuantum = { ml_kem1024 };
+
+            // Signal that the library is loaded
+            window.noblePostQuantumReady = true;
+            window.dispatchEvent(new Event('noblePostQuantumReady'));
         </script>
         <script src="/static/js/crypto.js"></script>
         <script src="/static/js/converter.js"></script>
@@ -497,6 +501,7 @@
             });
 
             // Callback functions for upload handler
+            let lastProgressLog = 0; // Track last progress log time
             const callbacks = {
                 showConverterNotice: (file) => {
                     console.log('[Main] Showing converter notice for:', file.name, file.type);
@@ -513,6 +518,7 @@
                 showProgress: () => {
                     console.log('[Main] Showing progress bar');
                     progress.style.display = "block";
+                    lastProgressLog = 0; // Reset progress log throttle
                 },
 
                 hideProgress: () => {
@@ -521,9 +527,16 @@
                 },
 
                 updateProgress: (percent, text) => {
-                    console.log('[Main] Progress update:', percent + '%', text);
+                    // Always update the UI
                     progressFill.style.width = percent + "%";
                     progressText.textContent = text;
+
+                    // Only log progress every 5 seconds
+                    const now = Date.now();
+                    if (now - lastProgressLog >= 5000) {
+                        console.log('[Main] Progress update:', percent.toFixed(1) + '%', text);
+                        lastProgressLog = now;
+                    }
                 },
 
                 showResult: (url, data) => {

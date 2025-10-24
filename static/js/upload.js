@@ -9,6 +9,7 @@ class UploadHandler {
         this.crypto = dogboxCrypto;
         this.converter = converter;
         this.pendingFile = null;
+        this.lastProgressLog = 0; // Timestamp of last progress log
 
         console.log('[Upload] UploadHandler initialized');
     }
@@ -23,12 +24,14 @@ class UploadHandler {
     }
 
     /**
-     * Check if file format is allowed (PNG or WebM)
+     * Check if file format is allowed (PNG, WebM, TXT)
+     * MP3 files need conversion to WebM to strip ID3 metadata
      */
     isAllowedFormat(file) {
         const allowed = file.type === 'image/png' ||
                        file.type === 'video/webm' ||
-                       file.type === 'audio/webm';
+                       file.type === 'audio/webm' ||
+                       file.type === 'text/plain';
         console.log('[Upload] isAllowedFormat:', file.type, '→', allowed);
         return allowed;
     }
@@ -43,7 +46,7 @@ class UploadHandler {
         const isAllowed = this.isAllowedFormat(file);
 
         if (!isAllowed && !needsConversion) {
-            const msg = 'Unsupported file type. Please upload PNG or WebM files, or a file that can be converted (JPEG, MP4, etc.)';
+            const msg = 'Unsupported file type. Please upload PNG, WebM, or TXT files, or a file that can be converted (JPEG, MP3, MP4, etc.)';
             console.error('[Upload] File rejected:', msg);
             alert(msg);
             return;
@@ -88,11 +91,17 @@ class UploadHandler {
             callbacks.showProgress();
             callbacks.updateProgress(0, 'Converting file format...');
 
-            // Convert file with progress tracking
+            // Convert file with progress tracking (throttled logging)
             const convertedFile = await this.converter.convert(this.pendingFile, (progressInfo) => {
                 const conversionProgress = progressInfo.progress || 0;
                 callbacks.updateProgress(conversionProgress * 0.5, `Converting: ${progressInfo.status}... ${Math.round(conversionProgress)}%`);
-                console.log('[Upload] Conversion progress:', conversionProgress, progressInfo.status);
+
+                // Only log progress every 5 seconds
+                const now = Date.now();
+                if (now - this.lastProgressLog >= 5000) {
+                    console.log('[Upload] Conversion progress:', conversionProgress.toFixed(1) + '%', progressInfo.status);
+                    this.lastProgressLog = now;
+                }
             });
 
             console.log('[Upload] Conversion complete:', convertedFile.name, convertedFile.type);

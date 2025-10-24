@@ -6,6 +6,8 @@ use crate::services::FileService;
 use axum::{
     body::Bytes,
     extract::{Multipart, Path, Query, State},
+    http::{header, HeaderMap},
+    response::IntoResponse,
     Json,
 };
 use serde::Deserialize;
@@ -189,13 +191,21 @@ pub async fn upload(
 pub async fn download(
     State(config): State<Arc<Config>>,
     Path(id): Path<String>,
-) -> Result<Bytes> {
+) -> Result<impl IntoResponse> {
     let db = Database::new(&config.database_url).await?;
     let service = FileService::new((*config).clone(), db);
 
-    let (_file, data) = service.retrieve_file(&id).await?;
+    let (file, data) = service.retrieve_file(&id).await?;
 
-    Ok(Bytes::from(data))
+    // Create headers with MIME type so client can determine file extension
+    let mut headers = HeaderMap::new();
+    if let Some(mime_type) = &file.mime_type {
+        if let Ok(header_value) = mime_type.parse() {
+            headers.insert(header::CONTENT_TYPE, header_value);
+        }
+    }
+
+    Ok((headers, Bytes::from(data)))
 }
 
 #[derive(Deserialize)]

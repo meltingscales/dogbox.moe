@@ -21,8 +21,11 @@ class FormatConverter {
     needsConversion(file) {
         const type = file.type.toLowerCase();
 
-        // Already in correct format
-        if (type === 'image/png' || type === 'video/webm') {
+        // Already in correct format (no conversion needed)
+        if (type === 'image/png' ||
+            type === 'video/webm' ||
+            type === 'audio/webm' ||
+            type === 'text/plain') {
             return false;
         }
 

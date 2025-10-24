@@ -1,4 +1,4 @@
-# dogbox.moe 🐕
+# dogbox.moe 🐕🐾🦴💨
 
 privacy focused catbox.moe alternative. data privacy model similar to signal
 

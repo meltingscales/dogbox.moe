@@ -371,8 +371,8 @@
                 </div>
                 <div class="feature">
                     <div class="feature-icon">⏱️</div>
-                    <strong>Auto-delete</strong>
-                    <p>Gone after 24 hours</p>
+                    <strong>Auto-delete option</strong>
+                    <p>Can be gone after 24 hours</p>
                 </div>
                 <div class="feature">
                     <div class="feature-icon">🛡️</div>
@@ -427,7 +427,9 @@
             "imports": {
                 "@noble/hashes/sha3": "https://unpkg.com/@noble/hashes@1.3.3/esm/sha3.js",
                 "@noble/hashes/sha256": "https://unpkg.com/@noble/hashes@1.3.3/esm/sha256.js",
-                "@noble/hashes/utils": "https://unpkg.com/@noble/hashes@1.3.3/esm/utils.js"
+                "@noble/hashes/utils": "https://unpkg.com/@noble/hashes@1.3.3/esm/utils.js",
+                "@noble/hashes/crypto": "https://unpkg.com/@noble/hashes@1.3.3/esm/crypto.js",
+                "@noble/hashes/_assert": "https://unpkg.com/@noble/hashes@1.3.3/esm/_assert.js"
             }
         }
         </script>
@@ -562,6 +564,11 @@
                     progress.style.display = "block";
                     progressFill.style.width = "50%";
                     progressText.textContent = "Generating encryption key...";
+
+                    // Check if post-quantum library is loaded
+                    if (!window.noblePostQuantum || !window.noblePostQuantum.ml_kem1024) {
+                        throw new Error('Post-quantum library not loaded yet. Please refresh the page and try again.');
+                    }
 
                     // Generate encryption key
                     const key = await dogboxCrypto.generateKey();

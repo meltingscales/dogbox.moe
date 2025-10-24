@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download - dogbox.moe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .status {
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .status.loading {
+            background: #dbeafe;
+            border: 2px solid #3b82f6;
+        }
+
+        .status.ready {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            border: 2px solid #ef4444;
+        }
+
+        .file-info {
+            display: none;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-icon {
+            font-size: 4em;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #5568d3;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #dc2626;
+        }
+
+        .progress {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+        }
+
+        .security-note {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐕 dogbox.moe</h1>
+
+        <div class="status loading" id="status">
+            <p id="statusText">🔍 Loading encrypted file...</p>
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-icon">📄</div>
+            <p style="text-align: center; font-size: 1.2em; margin-bottom: 10px;">
+                <strong>File ready to download</strong>
+            </p>
+            <p style="text-align: center; color: #666;">
+                The file will be decrypted in your browser before download
+            </p>
+        </div>
+
+        <button class="btn" id="downloadBtn" disabled>
+            🔓 Decrypt and Download
+        </button>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Processing...</div>
+        </div>
+
+        <div class="security-note">
+            🔒 <strong>Privacy Notice:</strong> This file is decrypted entirely in your browser.
+            The server never has access to the decryption key or the original file content.
+        </div>
+
+        <footer>
+            <p>
+                <a href="/">Upload a file</a> •
+                <a href="/docs">API Documentation</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="/static/js/crypto.js"></script>
+    <script>
+        const crypto = new DogboxCrypto();
+        const status = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const fileInfo = document.getElementById('fileInfo');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const progress = document.getElementById('progress');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+
+        let encryptedData = null;
+        let decryptionKey = null;
+
+        async function init() {
+            try {
+                // Extract file ID and key from URL
+                const path = window.location.pathname;
+                const fileId = path.split('/').pop();
+                const keyBase64 = window.location.hash.substring(1); // Remove #
+
+                if (!keyBase64) {
+                    throw new Error('No decryption key found in URL');
+                }
+
+                // Import key
+                decryptionKey = await crypto.importKey(keyBase64);
+
+                // Download encrypted file
+                const response = await fetch(`/api/files/${fileId}`);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('File not found or expired');
+                    }
+                    throw new Error('Failed to download file');
+                }
+
+                encryptedData = await response.arrayBuffer();
+
+                // Ready to decrypt
+                status.classList.remove('loading');
+                status.classList.add('ready');
+                statusText.textContent = '✅ File loaded successfully';
+                fileInfo.classList.add('show');
+                downloadBtn.disabled = false;
+
+            } catch (error) {
+                status.classList.remove('loading');
+                status.classList.add('error');
+                statusText.textContent = '❌ ' + error.message;
+            }
+        }
+
+        downloadBtn.addEventListener('click', async () => {
+            try {
+                downloadBtn.disabled = true;
+                progress.style.display = 'block';
+                progressFill.style.width = '0%';
+                progressText.textContent = 'Decrypting...';
+
+                // Decrypt file
+                const decryptedData = await crypto.decryptFile(encryptedData, decryptionKey);
+
+                progressFill.style.width = '100%';
+                progressText.textContent = 'Starting download...';
+
+                // Trigger download
+                const blob = new Blob([decryptedData]);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'downloaded_file'; // Could be enhanced to restore original filename
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                progressText.textContent = 'Download complete!';
+
+                setTimeout(() => {
+                    progress.style.display = 'none';
+                    downloadBtn.disabled = false;
+                }, 1000);
+
+            } catch (error) {
+                alert('Decryption failed: ' + error.message);
+                progress.style.display = 'none';
+                downloadBtn.disabled = false;
+            }
+        });
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

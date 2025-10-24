@@ -1,0 +1,13 @@
+target/
+uploads/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.local
+.git/
+.gitignore
+README.md
+justfile
+.vscode/
+.idea/

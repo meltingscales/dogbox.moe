@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Post Types - dogbox.moe</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Oxygen, Ubuntu, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding-bottom: 40px;
+            }
+
+            .content {
+                max-width: 1000px;
+                margin: 40px auto;
+                background: white;
+                border-radius: 16px;
+                padding: 40px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            }
+
+            h1 {
+                color: #333;
+                margin-bottom: 30px;
+            }
+
+            h2 {
+                color: #667eea;
+                margin-top: 30px;
+                margin-bottom: 15px;
+            }
+
+            .type-card {
+                border: 2px solid #e5e7eb;
+                border-radius: 12px;
+                padding: 25px;
+                margin: 20px 0;
+                background: #f9fafb;
+            }
+
+            .type-card h3 {
+                color: #667eea;
+                margin-bottom: 10px;
+            }
+
+            .feature-list {
+                margin: 15px 0;
+            }
+
+            .feature-list li {
+                margin: 8px 0;
+                color: #555;
+            }
+
+            code {
+                background: #f4f4f4;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-family: monospace;
+                color: #667eea;
+            }
+
+            pre {
+                background: #1e293b;
+                color: #e2e8f0;
+                padding: 20px;
+                border-radius: 8px;
+                overflow-x: auto;
+                margin: 15px 0;
+            }
+
+            pre code {
+                background: none;
+                color: #e2e8f0;
+                padding: 0;
+            }
+
+            .comparison-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+            .comparison-table th {
+                background: #667eea;
+                color: white;
+            }
+
+            .comparison-table tr:hover {
+                background: #f9fafb;
+            }
+
+            .highlight-box {
+                background: #dbeafe;
+                border-left: 4px solid #3b82f6;
+                padding: 15px;
+                margin: 15px 0;
+                border-radius: 4px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="navbar-placeholder"></div>
+
+        <div class="content">
+            <h1>📦 Post Types</h1>
+
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 30px">
+                dogbox.moe supports two types of uploads, each designed for
+                different use cases. Both use client-side encryption for maximum
+                privacy.
+            </p>
+
+            <div class="type-card">
+                <h3>📄 File (Classic One-Off Upload)</h3>
+                <p style="color: #666; margin-bottom: 15px">
+                    Traditional file hosting, similar to catbox.moe. Upload once,
+                    download anytime.
+                </p>
+
+                <h4>Features:</h4>
+                <ul class="feature-list">
+                    <li>✅ Single encrypted file upload</li>
+                    <li>✅ Any file type (images, PDFs, archives, etc.)</li>
+                    <li>✅ Configurable expiration (24 hours default)</li>
+                    <li>✅ Optional permanent storage</li>
+                    <li>✅ Manual deletion with token</li>
+                    <li>✅ Content-addressed deduplication</li>
+                </ul>
+
+                <h4>Best for:</h4>
+                <ul class="feature-list">
+                    <li>Sharing images, screenshots</li>
+                    <li>Document distribution</li>
+                    <li>Binary file transfers</li>
+                    <li>Temporary file hosting</li>
+                </ul>
+
+                <h4>API Example:</h4>
+                <pre><code>POST /api/upload
+Content-Type: multipart/form-data
+
+file: [encrypted binary data]
+post_type: file
+is_permanent: false
+expiry_hours: 24
+
+Response:
+{
+  "file_id": "abc123",
+  "deletion_token": "token123",
+  "expires_at": "2024-01-02T12:00:00Z",
+  "url": "/api/files/abc123",
+  "post_type": "file"
+}</code></pre>
+            </div>
+
+            <div class="type-card">
+                <h3>📝 Post (Appendable Content)</h3>
+                <p style="color: #666; margin-bottom: 15px">
+                    Collaborative encrypted notes with append functionality. Create
+                    once, add content over time.
+                </p>
+
+                <h4>Features:</h4>
+                <ul class="feature-list">
+                    <li>✅ Initial encrypted text/markdown content</li>
+                    <li>✅ Append new content with <code>post_append_key</code></li>
+                    <li>✅ Multiple encrypted chunks displayed in order</li>
+                    <li>✅ View count tracking</li>
+                    <li>✅ Permanent or expiring posts</li>
+                    <li>✅ No JavaScript, redirects, or CSS in content (security)</li>
+                </ul>
+
+                <h4>Best for:</h4>
+                <ul class="feature-list">
+                    <li>Collaborative notes (share append key)</li>
+                    <li>Encrypted logs or journals</li>
+                    <li>Public announcements with updates</li>
+                    <li>Markdown documentation</li>
+                </ul>
+
+                <h4>API Example:</h4>
+                <pre><code>// 1. Create post
+POST /api/upload
+Content-Type: multipart/form-data
+
+file: [encrypted markdown text]
+post_type: post
+is_permanent: true
+
+Response:
+{
+  "file_id": "xyz789",
+  "post_append_key": "append_secret_key",
+  "post_type": "post",
+  "is_permanent": true
+}
+
+// 2. Append content
+POST /api/posts/xyz789/append
+Content-Type: application/json
+
+{
+  "append_key": "append_secret_key",
+  "content": "[encrypted markdown]"
+}
+
+// 3. View post
+GET /api/posts/xyz789
+
+Response:
+{
+  "post_id": "xyz789",
+  "post_type": "post",
+  "is_permanent": true,
+  "view_count": 42,
+  "content": [
+    {
+      "content_encrypted": "...",
+      "appended_at": "2024-01-01T10:00:00Z",
+      "order": 0
+    },
+    {
+      "content_encrypted": "...",
+      "appended_at": "2024-01-01T14:00:00Z",
+      "order": 1
+    }
+  ]
+}</code></pre>
+            </div>
+
+            <h2>Comparison</h2>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>File (Classic)</th>
+                        <th>Post (Appendable)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Content Type</td>
+                        <td>Any binary file</td>
+                        <td>Text/Markdown only</td>
+                    </tr>
+                    <tr>
+                        <td>Storage</td>
+                        <td>On disk</td>
+                        <td>In database</td>
+                    </tr>
+                    <tr>
+                        <td>Append Support</td>
+                        <td>❌ No</td>
+                        <td>✅ Yes (with key)</td>
+                    </tr>
+                    <tr>
+                        <td>Permanent Option</td>
+                        <td>✅ Yes</td>
+                        <td>✅ Yes</td>
+                    </tr>
+                    <tr>
+                        <td>View Counter</td>
+                        <td>❌ No</td>
+                        <td>✅ Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Deduplication</td>
+                        <td>✅ Yes (by hash)</td>
+                        <td>✅ Yes (initial)</td>
+                    </tr>
+                    <tr>
+                        <td>Max Size</td>
+                        <td>100MB (configurable)</td>
+                        <td>100MB (configurable)</td>
+                    </tr>
+                    <tr>
+                        <td>Use Case</td>
+                        <td>File sharing</td>
+                        <td>Collaborative notes</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Privacy & Security</h2>
+
+            <div class="highlight-box">
+                <strong>Important:</strong> Both post types use the same encryption
+                model:
+                <ul style="margin-top: 10px">
+                    <li>
+                        Content encrypted client-side before upload
+                    </li>
+                    <li>Encryption key in URL fragment (never sent to server)</li>
+                    <li>Server cannot decrypt without the key</li>
+                    <li>
+                        For posts: each appended chunk is encrypted separately with the
+                        same key
+                    </li>
+                </ul>
+            </div>
+
+            <h3>Post Append Key vs. Encryption Key</h3>
+
+            <p style="margin: 15px 0; color: #555">
+                Posts use TWO keys for different purposes:
+            </p>
+
+            <ul class="feature-list">
+                <li>
+                    <strong>Encryption Key</strong> (in URL fragment): Required to
+                    <em>view/decrypt</em> the post
+                </li>
+                <li>
+                    <strong>Append Key</strong> (separate secret): Required to
+                    <em>add content</em> to the post
+                </li>
+            </ul>
+
+            <p style="margin: 15px 0; color: #555">
+                This separation allows you to:
+            </p>
+            <ul class="feature-list">
+                <li>
+                    Share the view URL (with encryption key) publicly - people can
+                    read but not edit
+                </li>
+                <li>
+                    Share the append key only with collaborators - they can add
+                    content
+                </li>
+                <li>
+                    Keep both keys private for a personal encrypted log only you can
+                    view and update
+                </li>
+            </ul>
+
+            <h2>Examples</h2>
+
+            <h3>Example 1: Public Announcement with Updates</h3>
+            <p style="color: #555; margin: 10px 0">
+                1. Create a permanent post with initial announcement<br />
+                2. Share the view URL publicly<br />
+                3. Keep the append key private<br />
+                4. Add updates over time using the append key<br />
+                5. Viewers automatically see all updates in order
+            </p>
+
+            <h3>Example 2: Private Encrypted Journal</h3>
+            <p style="color: #555; margin: 10px 0">
+                1. Create a permanent post<br />
+                2. Save both URLs (view + append key) in password manager<br />
+                3. Append new encrypted entries daily<br />
+                4. View consolidated journal anytime
+            </p>
+
+            <h3>Example 3: Collaborative Encrypted Notes</h3>
+            <p style="color: #555; margin: 10px 0">
+                1. Create a temporary post (expires in 7 days)<br />
+                2. Share view URL and append key with team (via secure channel)<br />
+                3. Team members can both view and add content<br />
+                4. Auto-deletes after project completion
+            </p>
+        </div>
+
+        <script>
+            fetch("/static/navbar.html")
+                .then((response) => response.text())
+                .then((html) => {
+                    document.getElementById("navbar-placeholder").innerHTML = html;
+                });
+        </script>
+    </body>
+</html>

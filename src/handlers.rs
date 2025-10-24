@@ -1,0 +1,292 @@
+use crate::config::Config;
+use crate::database::Database;
+use crate::error::{AppError, Result};
+use crate::models::*;
+use crate::services::FileService;
+use axum::{
+    body::Bytes,
+    extract::{Multipart, Path, Query, State},
+    Json,
+};
+use serde::Deserialize;
+use std::sync::Arc;
+use std::str::FromStr;
+use utoipa::OpenApi;
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(health, upload, download, delete_file, view_post, append_to_post),
+    components(schemas(
+        HealthResponse,
+        UploadRequest,
+        UploadResponse,
+        DeleteResponse,
+        PostType,
+        PostViewResponse,
+        PostContentView,
+        AppendRequest,
+        AppendResponse
+    )),
+    tags(
+        (name = "dogbox.moe", description = "Privacy-focused file hosting with E2EE")
+    ),
+    info(
+        title = "dogbox.moe API",
+        version = "0.1.0",
+        description = "Zero-knowledge file hosting with post-quantum encryption.\n\n\
+                      ## Privacy Model\n\
+                      - Files are encrypted CLIENT-SIDE before upload\n\
+                      - Server stores only encrypted blobs\n\
+                      - Decryption keys never leave the client\n\
+                      - Keys are stored in URL fragments (not sent to server)\n\
+                      - No user tracking or analytics\n\n\
+                      ## Security\n\
+                      - Hybrid encryption: ML-KEM-768 + ChaCha20-Poly1305\n\
+                      - Post-quantum resistant\n\
+                      - Automatic file expiration\n\
+                      - Secure deletion",
+        license(name = "MIT"),
+    )
+)]
+pub struct ApiDoc;
+
+/// Health check endpoint
+#[utoipa::path(
+    get,
+    path = "/api/health",
+    tag = "dogbox.moe",
+    responses(
+        (status = 200, description = "Service is healthy", body = HealthResponse)
+    )
+)]
+pub async fn health() -> Json<HealthResponse> {
+    Json(HealthResponse {
+        status: "ok".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    })
+}
+
+/// Upload encrypted file blob
+///
+/// Client should:
+/// 1. Generate encryption key
+/// 2. Encrypt file with key
+/// 3. Upload encrypted blob
+/// 4. Receive file_id and construct URL with key in fragment: /f/{file_id}#{key}
+#[utoipa::path(
+    post,
+    path = "/api/upload",
+    tag = "dogbox.moe",
+    request_body(content = inline(Vec<u8>), description = "Encrypted file blob", content_type = "application/octet-stream"),
+    responses(
+        (status = 200, description = "File uploaded successfully", body = UploadResponse),
+        (status = 413, description = "File too large"),
+        (status = 500, description = "Upload failed")
+    )
+)]
+pub async fn upload(
+    State(config): State<Arc<Config>>,
+    mut multipart: Multipart,
+) -> Result<Json<UploadResponse>> {
+    let db = Database::new(&config.database_url).await?;
+    let service = FileService::new((*config).clone(), db);
+
+    let mut file_data: Option<Vec<u8>> = None;
+    let mut filename_encrypted: Option<String> = None;
+    let mut mime_type: Option<String> = None;
+    let mut expiry_hours: Option<i64> = None;
+    let mut post_type: Option<PostType> = None;
+    let mut is_permanent: Option<bool> = None;
+
+    // Parse multipart form data
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        AppError::BadRequest(format!("Failed to parse multipart: {}", e))
+    })? {
+        let name = field.name().unwrap_or("").to_string();
+
+        match name.as_str() {
+            "file" => {
+                let data = field.bytes().await.map_err(|e| {
+                    AppError::BadRequest(format!("Failed to read file data: {}", e))
+                })?;
+                file_data = Some(data.to_vec());
+            }
+            "filename" => {
+                filename_encrypted = Some(field.text().await.map_err(|e| {
+                    AppError::BadRequest(format!("Failed to read filename: {}", e))
+                })?);
+            }
+            "mime_type" => {
+                mime_type = Some(field.text().await.map_err(|e| {
+                    AppError::BadRequest(format!("Failed to read mime_type: {}", e))
+                })?);
+            }
+            "expiry_hours" => {
+                let text = field.text().await.map_err(|e| {
+                    AppError::BadRequest(format!("Failed to read expiry_hours: {}", e))
+                })?;
+                expiry_hours = Some(text.parse().map_err(|_| {
+                    AppError::BadRequest("Invalid expiry_hours value".to_string())
+                })?);
+            }
+            "post_type" => {
+                let text = field.text().await.map_err(|e| {
+                    AppError::BadRequest(format!("Failed to read post_type: {}", e))
+                })?;
+                post_type = Some(PostType::from_str(&text).map_err(|e| {
+                    AppError::BadRequest(e)
+                })?);
+            }
+            "is_permanent" => {
+                let text = field.text().await.map_err(|e| {
+                    AppError::BadRequest(format!("Failed to read is_permanent: {}", e))
+                })?;
+                is_permanent = Some(text.parse().map_err(|_| {
+                    AppError::BadRequest("Invalid is_permanent value".to_string())
+                })?);
+            }
+            _ => {}
+        }
+    }
+
+    let data = file_data.ok_or_else(|| AppError::BadRequest("No file data provided".to_string()))?;
+    let final_post_type = post_type.unwrap_or(PostType::File);
+    let final_is_permanent = is_permanent.unwrap_or(false);
+
+    // Store encrypted file
+    let file = service
+        .store_file(data, filename_encrypted, mime_type, expiry_hours, final_post_type, final_is_permanent)
+        .await?;
+
+    Ok(Json(UploadResponse {
+        file_id: file.id.clone(),
+        deletion_token: file.deletion_token.clone(),
+        expires_at: if file.is_permanent { None } else { Some(file.expires_at) },
+        url: format!("/api/files/{}", file.id),
+        post_type: file.get_post_type(),
+        post_append_key: file.post_append_key.clone(),
+        is_permanent: file.is_permanent,
+    }))
+}
+
+/// Download encrypted file blob
+///
+/// Returns the encrypted blob. Client must decrypt using key from URL fragment.
+#[utoipa::path(
+    get,
+    path = "/api/files/{id}",
+    tag = "dogbox.moe",
+    params(
+        ("id" = String, Path, description = "File ID")
+    ),
+    responses(
+        (status = 200, description = "Encrypted file blob", body = Vec<u8>, content_type = "application/octet-stream"),
+        (status = 404, description = "File not found or expired")
+    )
+)]
+pub async fn download(
+    State(config): State<Arc<Config>>,
+    Path(id): Path<String>,
+) -> Result<Bytes> {
+    let db = Database::new(&config.database_url).await?;
+    let service = FileService::new((*config).clone(), db);
+
+    let (_file, data) = service.retrieve_file(&id).await?;
+
+    Ok(Bytes::from(data))
+}
+
+#[derive(Deserialize)]
+pub struct DeleteQuery {
+    token: String,
+}
+
+/// Delete file with deletion token
+///
+/// Requires the deletion token returned during upload.
+#[utoipa::path(
+    delete,
+    path = "/api/files/{id}",
+    tag = "dogbox.moe",
+    params(
+        ("id" = String, Path, description = "File ID"),
+        ("token" = String, Query, description = "Deletion token")
+    ),
+    responses(
+        (status = 200, description = "File deleted successfully", body = DeleteResponse),
+        (status = 403, description = "Invalid deletion token"),
+        (status = 404, description = "File not found")
+    )
+)]
+pub async fn delete_file(
+    State(config): State<Arc<Config>>,
+    Path(id): Path<String>,
+    Query(query): Query<DeleteQuery>,
+) -> Result<Json<DeleteResponse>> {
+    let db = Database::new(&config.database_url).await?;
+    let service = FileService::new((*config).clone(), db);
+
+    service.delete_file(&id, &query.token).await?;
+
+    Ok(Json(DeleteResponse {
+        success: true,
+        message: "File deleted successfully".to_string(),
+    }))
+}
+
+/// View a post with all appended content
+#[utoipa::path(
+    get,
+    path = "/api/posts/{id}",
+    tag = "dogbox.moe",
+    params(
+        ("id" = String, Path, description = "Post ID")
+    ),
+    responses(
+        (status = 200, description = "Post content", body = PostViewResponse),
+        (status = 404, description = "Post not found")
+    )
+)]
+pub async fn view_post(
+    State(config): State<Arc<Config>>,
+    Path(id): Path<String>,
+) -> Result<Json<PostViewResponse>> {
+    let db = Database::new(&config.database_url).await?;
+    let service = FileService::new((*config).clone(), db);
+
+    let post = service.view_post(&id).await?;
+
+    Ok(Json(post))
+}
+
+/// Append content to a post
+#[utoipa::path(
+    post,
+    path = "/api/posts/{id}/append",
+    tag = "dogbox.moe",
+    params(
+        ("id" = String, Path, description = "Post ID")
+    ),
+    request_body = AppendRequest,
+    responses(
+        (status = 200, description = "Content appended successfully", body = AppendResponse),
+        (status = 403, description = "Invalid append key"),
+        (status = 404, description = "Post not found")
+    )
+)]
+pub async fn append_to_post(
+    State(config): State<Arc<Config>>,
+    Path(id): Path<String>,
+    Json(req): Json<AppendRequest>,
+) -> Result<Json<AppendResponse>> {
+    let db = Database::new(&config.database_url).await?;
+    let service = FileService::new((*config).clone(), db);
+
+    let order = service.append_to_post(&id, &req.append_key, req.content).await?;
+
+    Ok(Json(AppendResponse {
+        success: true,
+        message: "Content appended successfully".to_string(),
+        content_order: order,
+    }))
+}

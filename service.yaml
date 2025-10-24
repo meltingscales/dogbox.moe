@@ -1,0 +1,58 @@
+# Cloud Run service configuration
+# Alternative to using gcloud CLI commands
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: dogbox
+  labels:
+    app: dogbox
+spec:
+  template:
+    metadata:
+      annotations:
+        # Auto-scaling configuration
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+        # Privacy: no request logging
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - image: gcr.io/PROJECT_ID/dogbox:latest
+          ports:
+            - name: http1
+              containerPort: 8080
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8080"
+            - name: DATABASE_URL
+              value: "sqlite:/data/dogbox.db"
+            - name: UPLOAD_DIR
+              value: "/data/uploads"
+            - name: MAX_FILE_SIZE_MB
+              value: "100"
+            - name: DEFAULT_EXPIRY_HOURS
+              value: "24"
+            - name: MAX_EXPIRY_HOURS
+              value: "168"
+            - name: ENABLE_ANALYTICS
+              value: "false"
+            - name: RUST_LOG
+              value: "dogbox=info"
+          resources:
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
+  traffic:
+    - percent: 100
+      latestRevision: true

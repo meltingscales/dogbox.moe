@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, filename_encrypted, size_bytes, mime_type,\n                   uploaded_at as \"uploaded_at: DateTime<Utc>\",\n                   expires_at as \"expires_at: DateTime<Utc>\",\n                   deletion_token, storage_path, blake3_hash,\n                   created_at as \"created_at: DateTime<Utc>\"\n            FROM files\n            WHERE blake3_hash = ? AND expires_at > datetime('now')\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "filename_encrypted",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "size_bytes",
+        "ordinal": 2,
+        "type_info": "Int64"
+      },
+      {
+        "name": "mime_type",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "uploaded_at: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "expires_at: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "deletion_token",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "storage_path",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "blake3_hash",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "106b15be4201faf48635845a7dd2464fab8b7d309622ae26660a84d799205f65"
+}

@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>FAQ - dogbox.moe</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Oxygen, Ubuntu, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding-bottom: 40px;
+            }
+
+            .content {
+                max-width: 900px;
+                margin: 40px auto;
+                background: white;
+                border-radius: 16px;
+                padding: 40px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            }
+
+            h1 {
+                color: #333;
+                margin-bottom: 30px;
+            }
+
+            .faq-section {
+                margin-bottom: 30px;
+            }
+
+            .faq-question {
+                font-weight: bold;
+                color: #667eea;
+                font-size: 1.2em;
+                margin-bottom: 10px;
+                margin-top: 25px;
+            }
+
+            .faq-answer {
+                color: #555;
+                line-height: 1.6;
+                margin-bottom: 15px;
+            }
+
+            code {
+                background: #f4f4f4;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-family: monospace;
+                color: #667eea;
+            }
+
+            .highlight-box {
+                background: #f0fdf4;
+                border-left: 4px solid #10b981;
+                padding: 15px;
+                margin: 15px 0;
+                border-radius: 4px;
+            }
+
+            .warning-box {
+                background: #fef3c7;
+                border-left: 4px solid #f59e0b;
+                padding: 15px;
+                margin: 15px 0;
+                border-radius: 4px;
+            }
+
+            ul {
+                margin-left: 20px;
+                margin-bottom: 15px;
+            }
+
+            li {
+                margin-bottom: 8px;
+                color: #555;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Navbar will be inserted here -->
+        <div id="navbar-placeholder"></div>
+
+        <div class="content">
+            <h1>Frequently Asked Questions</h1>
+
+            <div class="faq-section">
+                <div class="faq-question">
+                    🔒 Why can't the server operator see my files?
+                </div>
+                <div class="faq-answer">
+                    <p>
+                        dogbox.moe uses <strong>client-side encryption</strong>,
+                        inspired by Signal's zero-knowledge architecture:
+                    </p>
+                    <ul>
+                        <li>
+                            Your files are encrypted <strong>in your browser</strong>
+                            before upload
+                        </li>
+                        <li>
+                            The encryption key <strong>never leaves your device</strong>
+                        </li>
+                        <li>
+                            Keys are stored in the URL fragment (after the <code>#</code>),
+                            which is <strong>never sent to the server</strong>
+                        </li>
+                        <li>
+                            The server only sees encrypted blobs - without the key,
+                            the files are unreadable
+                        </li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        <strong>Technical Detail:</strong> URL fragments (#key) are
+                        processed client-side only. When you visit
+                        <code>dogbox.moe/f/abc123#key_here</code>, only
+                        <code>dogbox.moe/f/abc123</code> is sent to the server. The
+                        browser then uses the fragment to decrypt the file locally.
+                    </div>
+                </div>
+
+                <div class="faq-question">
+                    🛡️ What encryption does dogbox use?
+                </div>
+                <div class="faq-answer">
+                    <p>
+                        Currently, dogbox uses <strong>AES-256-GCM</strong> authenticated
+                        encryption (browser-native via Web Crypto API).
+                    </p>
+                    <p>
+                        The architecture supports upgrading to
+                        <strong>post-quantum hybrid encryption</strong>:
+                    </p>
+                    <ul>
+                        <li>ML-KEM-768 (Kyber) for key encapsulation</li>
+                        <li>ChaCha20-Poly1305 for symmetric encryption</li>
+                        <li>BLAKE3 for hashing</li>
+                    </ul>
+                    <p>
+                        This provides protection against future quantum computer
+                        attacks.
+                    </p>
+                </div>
+
+                <div class="faq-question">
+                    🚫 What data does dogbox collect?
+                </div>
+                <div class="faq-answer">
+                    <p><strong>Minimal metadata only:</strong></p>
+                    <ul>
+                        <li>File size (of encrypted blob)</li>
+                        <li>Upload timestamp</li>
+                        <li>Expiration date</li>
+                        <li>
+                            BLAKE3 hash of <em>encrypted</em> data (for deduplication)
+                        </li>
+                    </ul>
+
+                    <p><strong>What we DON'T collect:</strong></p>
+                    <ul>
+                        <li>❌ Decryption keys</li>
+                        <li>❌ Original filenames (unless you encrypt and send them)</li>
+                        <li>❌ IP addresses (no logging)</li>
+                        <li>❌ User accounts or authentication</li>
+                        <li>❌ Analytics or tracking cookies</li>
+                        <li>❌ File content (only encrypted blobs)</li>
+                    </ul>
+                </div>
+
+                <div class="faq-question">
+                    ⏱️ How long are files stored?
+                </div>
+                <div class="faq-answer">
+                    <ul>
+                        <li>
+                            <strong>Default:</strong> 24 hours (configurable at upload)
+                        </li>
+                        <li><strong>Maximum:</strong> 7 days for expiring files</li>
+                        <li>
+                            <strong>Permanent:</strong> Available for posts (never
+                            expires)
+                        </li>
+                        <li>
+                            <strong>Cleanup:</strong> Expired files are automatically
+                            deleted hourly
+                        </li>
+                    </ul>
+
+                    <div class="warning-box">
+                        <strong>⚠️ Important:</strong> Save your download links! There's
+                        no way to recover files after expiration or if you lose the
+                        encryption key.
+                    </div>
+                </div>
+
+                <div class="faq-question">🗑️ Can I delete files early?</div>
+                <div class="faq-answer">
+                    <p>
+                        Yes! When you upload a file, you receive a
+                        <strong>deletion token</strong>. Use this token to manually
+                        delete files before expiration via the API:
+                    </p>
+                    <code
+                        >DELETE /api/files/{id}?token={deletion_token}</code
+                    >
+                </div>
+
+                <div class="faq-question">📊 What are "posts" vs "files"?</div>
+                <div class="faq-answer">
+                    <p>dogbox supports two upload types:</p>
+
+                    <p><strong>1. Files (Classic Mode):</strong></p>
+                    <ul>
+                        <li>One-time file uploads (like catbox.moe)</li>
+                        <li>Encrypted files stored on disk</li>
+                        <li>Download once, get the encrypted blob</li>
+                        <li>Perfect for sharing images, documents, etc.</li>
+                    </ul>
+
+                    <p><strong>2. Posts (Appendable):</strong></p>
+                    <ul>
+                        <li>Text/markdown content stored in database</li>
+                        <li>
+                            Can append new content with <code>post_append_key</code>
+                        </li>
+                        <li>Multiple encrypted chunks viewable in order</li>
+                        <li>Perfect for collaborative notes or logs</li>
+                    </ul>
+
+                    <p>
+                        See <a href="/post-types">Post Types</a> for detailed
+                        information.
+                    </p>
+                </div>
+
+                <div class="faq-question">
+                    🔑 What is a post_append_key?
+                </div>
+                <div class="faq-answer">
+                    <p>
+                        When creating a <strong>post</strong>, you receive a special
+                        <code>post_append_key</code> that allows you (or anyone with the
+                        key) to add more encrypted content to the post.
+                    </p>
+                    <ul>
+                        <li>Each append creates a new encrypted chunk</li>
+                        <li>Chunks are displayed in order when viewing the post</li>
+                        <li>
+                            The append key is separate from the encryption key (which is
+                            in the URL)
+                        </li>
+                        <li>
+                            Only people with the append key can add content (viewers
+                            don't need it)
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="faq-question">
+                    🌐 Is dogbox open source?
+                </div>
+                <div class="faq-answer">
+                    <p>
+                        Yes! dogbox.moe is fully open source under the MIT license. View
+                        the code, contribute, or self-host:
+                    </p>
+                    <p>
+                        <a
+                            href="https://github.com/meltingscales/dogbox.moe"
+                            target="_blank"
+                            >github.com/meltingscales/dogbox.moe</a
+                        >
+                    </p>
+                </div>
+
+                <div class="faq-question">
+                    💾 Can I self-host dogbox?
+                </div>
+                <div class="faq-answer">
+                    <p>Absolutely! dogbox is designed for easy self-hosting:</p>
+                    <pre style="background: #f4f4f4; padding: 15px; border-radius: 8px; overflow-x: auto;"><code>git clone https://github.com/meltingscales/dogbox.moe
+cd dogbox.moe
+cp .env.example .env
+cargo run
+
+# Or with Docker:
+docker build -t dogbox .
+docker run -p 8080:8080 dogbox</code></pre>
+
+                    <p>
+                        See the
+                        <a href="https://github.com/meltingscales/dogbox.moe#readme"
+                            >README</a
+                        >
+                        for full deployment instructions.
+                    </p>
+                </div>
+
+                <div class="faq-question">
+                    🔐 Is this really secure?
+                </div>
+                <div class="faq-answer">
+                    <p>
+                        dogbox provides strong privacy guarantees, but like any system,
+                        security depends on proper use:
+                    </p>
+
+                    <p><strong>What dogbox protects against:</strong></p>
+                    <ul>
+                        <li>Server compromise (encrypted blobs only)</li>
+                        <li>Network eavesdropping (TLS + client-side encryption)</li>
+                        <li>Malicious server operators (zero-knowledge design)</li>
+                    </ul>
+
+                    <p><strong>What dogbox CANNOT protect against:</strong></p>
+                    <ul>
+                        <li>Compromised client device (malware on your computer)</li>
+                        <li>
+                            Sharing links publicly (anyone with the URL can decrypt)
+                        </li>
+                        <li>
+                            Screen recording or shoulder surfing while viewing files
+                        </li>
+                    </ul>
+
+                    <div class="warning-box">
+                        <strong>Remember:</strong> The encryption key is in the URL. If
+                        you share the full URL, you're sharing the ability to decrypt the
+                        file!
+                    </div>
+                </div>
+
+                <div class="faq-question">
+                    📞 How do I report security issues?
+                </div>
+                <div class="faq-answer">
+                    <p>
+                        Please do NOT open public GitHub issues for security
+                        vulnerabilities.
+                    </p>
+                    <p>
+                        Email: <code>security@dogbox.moe</code> or create a private
+                        security advisory on GitHub.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Load navbar
+            fetch("/static/navbar.html")
+                .then((response) => response.text())
+                .then((html) => {
+                    document.getElementById("navbar-placeholder").innerHTML = html;
+                });
+        </script>
+    </body>
+</html>

@@ -106,9 +106,43 @@ generate-client:
     curl -s http://localhost:8080/api-docs/openapi.json > openapi.json
     @echo "OpenAPI spec saved to openapi.json"
 
-# Security audit
+# Security audit (Rust dependencies)
 audit:
     cargo audit
+
+# Trivy security scan - filesystem
+trivy-fs:
+    @echo "Scanning filesystem for vulnerabilities..."
+    trivy fs --scanners vuln,secret,misconfig .
+
+# Trivy security scan - Docker image
+trivy-docker:
+    @echo "Building Docker image..."
+    @docker build -t dogbox:latest . || (echo "Docker build failed. Make sure Docker is running."; exit 1)
+    @echo "Scanning Docker image for vulnerabilities..."
+    trivy image --scanners vuln dogbox:latest
+
+# Trivy security scan - comprehensive (filesystem + dependencies)
+trivy-all:
+    @echo "Running comprehensive security scan..."
+    @echo "\n=== Scanning Rust dependencies ==="
+    trivy fs --scanners vuln --skip-dirs target --security-checks vuln .
+    @echo "\n=== Scanning for secrets ==="
+    trivy fs --scanners secret .
+    @echo "\n=== Scanning for misconfigurations ==="
+    trivy fs --scanners misconfig .
+
+# Trivy - generate security report (JSON)
+trivy-report:
+    @echo "Generating security report..."
+    @mkdir -p reports
+    trivy fs --scanners vuln,secret,misconfig --format json --output reports/trivy-report.json .
+    @echo "Report saved to reports/trivy-report.json"
+
+# Trivy - scan with severity threshold (only HIGH and CRITICAL)
+trivy-critical:
+    @echo "Scanning for HIGH and CRITICAL vulnerabilities only..."
+    trivy fs --scanners vuln --severity HIGH,CRITICAL .
 
 # Run benchmarks
 bench:

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT COALESCE(MAX(content_order), -1) + 1 as \"next_order!\"\n            FROM posts_content\n            WHERE file_id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "next_order!",
+        "ordinal": 0,
+        "type_info": "Int"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8468bd84a02e6c36eacf805b1bce8c3c7e2fd3b6b067b2693220da56aaa7ae4f"
+}

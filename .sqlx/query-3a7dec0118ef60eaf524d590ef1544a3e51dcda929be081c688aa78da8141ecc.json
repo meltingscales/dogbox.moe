@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE files\n            SET view_count = view_count + 1\n            WHERE id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "3a7dec0118ef60eaf524d590ef1544a3e51dcda929be081c688aa78da8141ecc"
+}

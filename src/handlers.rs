@@ -15,7 +15,7 @@ use utoipa::OpenApi;
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(health, upload, download, delete_file, view_post, append_to_post),
+    paths(health, upload, download, delete_file, view_post, append_to_post, stats),
     components(schemas(
         HealthResponse,
         UploadRequest,
@@ -25,7 +25,8 @@ use utoipa::OpenApi;
         PostViewResponse,
         PostContentView,
         AppendRequest,
-        AppendResponse
+        AppendResponse,
+        StatsResponse
     )),
     tags(
         (name = "dogbox.moe", description = "Privacy-focused file hosting with E2EE")
@@ -59,10 +60,11 @@ pub struct ApiDoc;
         (status = 200, description = "Service is healthy", body = HealthResponse)
     )
 )]
-pub async fn health() -> Json<HealthResponse> {
+pub async fn health(State(config): State<Arc<Config>>) -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "ok".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
+        test_mode: config.test_delete_24hr,
     })
 }
 
@@ -288,5 +290,32 @@ pub async fn append_to_post(
         success: true,
         message: "Content appended successfully".to_string(),
         content_order: order,
+    }))
+}
+
+/// Get public statistics
+#[utoipa::path(
+    get,
+    path = "/api/stats",
+    tag = "dogbox.moe",
+    responses(
+        (status = 200, description = "System statistics", body = StatsResponse)
+    )
+)]
+pub async fn stats(
+    State(config): State<Arc<Config>>,
+) -> Result<Json<StatsResponse>> {
+    let db = Database::new(&config.database_url).await?;
+
+    let (total, posts, files, permanent, temporary, views, bytes) = db.get_stats().await?;
+
+    Ok(Json(StatsResponse {
+        total_uploads: total,
+        total_posts: posts,
+        total_files: files,
+        permanent_count: permanent,
+        temporary_count: temporary,
+        total_views: views,
+        storage_mb: (bytes as f64) / (1024.0 * 1024.0),
     }))
 }

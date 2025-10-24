@@ -10,6 +10,7 @@ pub struct Config {
     pub default_expiry_hours: i64,
     pub max_expiry_hours: i64,
     pub enable_analytics: bool,
+    pub test_delete_24hr: bool,
 }
 
 impl Config {
@@ -33,6 +34,10 @@ impl Config {
                 .unwrap_or_else(|_| "168".to_string())
                 .parse()?,
             enable_analytics: env::var("ENABLE_ANALYTICS")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            test_delete_24hr: env::var("TEST_DELETE_24HR")
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),

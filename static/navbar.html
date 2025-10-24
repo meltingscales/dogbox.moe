@@ -1,4 +1,19 @@
 <style>
+    .test-mode-banner {
+        background: #dc2626;
+        color: white;
+        padding: 12px 20px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.95em;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        display: none;
+    }
+
+    .test-mode-banner.show {
+        display: block;
+    }
+
     .navbar {
         background: rgba(102, 126, 234, 0.95);
         padding: 15px 0;
@@ -51,14 +66,24 @@
     }
 </style>
 
+<script src="/static/js/config.js"></script>
+
+<div class="test-mode-banner" id="test-mode-banner">
+    ⚠️ <strong>TEST MODE:</strong> This instance is running in test mode. All data will be automatically deleted every 24 hours to save disk space.
+</div>
+
 <nav class="navbar">
     <div class="navbar-container">
-        <a href="/" class="navbar-brand">🐕 dogbox.moe</a>
+        <a href="/" class="navbar-brand" id="navbar-brand-link">
+            <span id="navbar-logo"></span> <span id="navbar-sitename"></span>
+        </a>
         <ul class="navbar-nav">
             <li><a href="/" class="navbar-link">Upload</a></li>
             <li><a href="/faq" class="navbar-link">FAQ</a></li>
             <li><a href="/post-types" class="navbar-link">Post Types</a></li>
-            <li><a href="/docs" class="navbar-link">API Docs</a></li>
+            <li><a href="/prohibited-uploads" class="navbar-link">Prohibited</a></li>
+            <li><a href="/stats" class="navbar-link">Stats</a></li>
+            <li><a href="/docs" class="navbar-link">API</a></li>
         </ul>
     </div>
 </nav>

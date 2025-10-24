@@ -51,6 +51,20 @@ async fn serve_post_types() -> impl IntoResponse {
     }
 }
 
+async fn serve_stats() -> impl IntoResponse {
+    match tokio::fs::read_to_string("static/stats.html").await {
+        Ok(content) => Html(content).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load page").into_response(),
+    }
+}
+
+async fn serve_prohibited_uploads() -> impl IntoResponse {
+    match tokio::fs::read_to_string("static/prohibited-uploads.html").await {
+        Ok(content) => Html(content).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load page").into_response(),
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize tracing
@@ -102,8 +116,11 @@ async fn main() -> anyhow::Result<()> {
         .route("/f/:id", get(serve_download))
         .route("/faq", get(serve_faq))
         .route("/post-types", get(serve_post_types))
+        .route("/prohibited-uploads", get(serve_prohibited_uploads))
+        .route("/stats", get(serve_stats))
         // API routes
         .route("/api/health", get(handlers::health))
+        .route("/api/stats", get(handlers::stats))
         .route("/api/upload", post(handlers::upload))
         .route("/api/files/:id", get(handlers::download))
         .route("/api/files/:id", delete(handlers::delete_file))
@@ -119,7 +136,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Start server
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    tracing::info!("🐕 dogbox.moe listening on {}", addr);
+    tracing::info!("🐕🐾🦴💨 dogbox.moe listening on {}", addr);
     tracing::info!("📖 API docs available at http://{}/docs", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;

@@ -10,6 +10,7 @@ pub struct Database {
 
 impl Database {
     pub async fn new(database_url: &str) -> anyhow::Result<Self> {
+        // Create database if it doesn't exist
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
             .connect(database_url)
@@ -19,14 +20,9 @@ impl Database {
     }
 
     pub async fn migrate(&self) -> anyhow::Result<()> {
-        // Read and execute migration files
-        let migration1 = include_str!("../migrations/001_init.sql");
-        sqlx::raw_sql(migration1).execute(&self.pool).await?;
-
-        let migration2 = include_str!("../migrations/002_post_types.sql");
-        sqlx::raw_sql(migration2).execute(&self.pool).await?;
-
-        tracing::info!("Database migrations completed");
+        // Note: Migrations are now handled by justfile to avoid double-execution
+        // This function is kept for backward compatibility
+        tracing::info!("Migration check complete (managed externally)");
         Ok(())
     }
 
@@ -169,7 +165,8 @@ impl Database {
         let content = sqlx::query_as!(
             PostContent,
             r#"
-            SELECT id, file_id, content_encrypted, content_order,
+            SELECT id as "id!", file_id, content_encrypted,
+                   content_order as "content_order!",
                    appended_at as "appended_at: DateTime<Utc>"
             FROM posts_content
             WHERE file_id = ?
@@ -186,7 +183,7 @@ impl Database {
     pub async fn get_next_content_order(&self, file_id: &str) -> Result<i64> {
         let result = sqlx::query!(
             r#"
-            SELECT COALESCE(MAX(content_order), -1) + 1 as next_order
+            SELECT COALESCE(MAX(content_order), -1) + 1 as "next_order!"
             FROM posts_content
             WHERE file_id = ?
             "#,
@@ -195,7 +192,7 @@ impl Database {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(result.next_order.unwrap_or(0))
+        Ok(result.next_order as i64)
     }
 
     pub async fn verify_append_key(&self, file_id: &str, append_key: &str) -> Result<bool> {
@@ -212,5 +209,101 @@ impl Database {
         .await?;
 
         Ok(result.count > 0)
+    }
+
+    pub async fn truncate_all_tables(&self) -> anyhow::Result<()> {
+        // Delete all files and posts content (for test mode)
+        sqlx::query!("DELETE FROM posts_content")
+            .execute(&self.pool)
+            .await?;
+
+        sqlx::query!("DELETE FROM files")
+            .execute(&self.pool)
+            .await?;
+
+        tracing::warn!("🧪 TEST MODE: All tables truncated");
+        Ok(())
+    }
+
+    pub async fn get_stats(&self) -> Result<(i64, i64, i64, i64, i64, i64, i64)> {
+        let total_result = sqlx::query!(
+            r#"
+            SELECT COUNT(*) as "count!"
+            FROM files
+            WHERE is_permanent = 1 OR expires_at > datetime('now')
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let posts_result = sqlx::query!(
+            r#"
+            SELECT COUNT(*) as "count!"
+            FROM files
+            WHERE post_type = 'post' AND (is_permanent = 1 OR expires_at > datetime('now'))
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let files_result = sqlx::query!(
+            r#"
+            SELECT COUNT(*) as "count!"
+            FROM files
+            WHERE post_type = 'file' AND (is_permanent = 1 OR expires_at > datetime('now'))
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let permanent_result = sqlx::query!(
+            r#"
+            SELECT COUNT(*) as "count!"
+            FROM files
+            WHERE is_permanent = 1
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let temporary_result = sqlx::query!(
+            r#"
+            SELECT COUNT(*) as "count!"
+            FROM files
+            WHERE is_permanent = 0 AND expires_at > datetime('now')
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let views_result = sqlx::query!(
+            r#"
+            SELECT COALESCE(SUM(view_count), 0) as "total_views!"
+            FROM files
+            WHERE is_permanent = 1 OR expires_at > datetime('now')
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let size_result = sqlx::query!(
+            r#"
+            SELECT COALESCE(SUM(size_bytes), 0) as "total_bytes!"
+            FROM files
+            WHERE is_permanent = 1 OR expires_at > datetime('now')
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok((
+            total_result.count as i64,
+            posts_result.count as i64,
+            files_result.count as i64,
+            permanent_result.count as i64,
+            temporary_result.count as i64,
+            views_result.total_views as i64,
+            size_result.total_bytes as i64,
+        ))
     }
 }

@@ -110,6 +110,7 @@ pub struct UploadResponse {
 pub struct HealthResponse {
     pub status: String,
     pub version: String,
+    pub test_mode: bool,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -117,6 +118,18 @@ pub struct DeleteResponse {
     pub success: bool,
     pub message: String,
 }
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct StatsResponse {
+    pub total_uploads: i64,
+    pub total_posts: i64,
+    pub total_files: i64,
+    pub permanent_count: i64,
+    pub temporary_count: i64,
+    pub total_views: i64,
+    pub storage_mb: f64,
+}
+
 
 // Post content entry
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -175,7 +188,7 @@ impl FileRecord {
         is_permanent: bool,
     ) -> Self {
         let post_append_key = if post_type == PostType::Post {
-            Some(Uuid::new_v4().to_string())
+            Some(format!("DOGBOX_KEY_APPEND_{}", Uuid::new_v4()))
         } else {
             None
         };

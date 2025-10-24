@@ -5,9 +5,36 @@
 default:
     @just --list
 
+# Initialize database with migrations
+dev-db-init:
+    @echo "Creating database and running migrations..."
+    @mkdir -p uploads
+    @sqlite3 dogbox.db < migrations/000_migrations.sql
+    @sqlite3 dogbox.db < migrations/001_init.sql
+    @sqlite3 dogbox.db < migrations/002_post_types.sql
+    @echo "Database initialized!"
+
+# Reset database (clean and reinitialize)
+dev-db-reset:
+    @echo "Resetting database..."
+    @rm -f dogbox.db dogbox.db-shm dogbox.db-wal
+    @just dev-db-init
+
 # Run the development server
 dev:
+    @echo "Setting up development environment..."
+    @mkdir -p uploads
+    @if [ ! -f dogbox.db ]; then just dev-db-init; fi
+    @echo "Starting dogbox in development mode..."
     RUST_LOG=dogbox=debug,tower_http=debug cargo run
+
+# Run the development server in TEST MODE (wipes all data every 24hr)
+dev-test:
+    @echo "Setting up TEST MODE development environment..."
+    @mkdir -p uploads
+    @if [ ! -f dogbox.db ]; then just dev-db-init; fi
+    @echo "⚠️  Starting dogbox in TEST MODE - all data will be wiped every 24 hours"
+    TEST_DELETE_24HR=true RUST_LOG=dogbox=debug,tower_http=debug cargo run
 
 # Build for production
 build:
@@ -28,9 +55,9 @@ fmt:
 
 # Run database migrations
 migrate:
-    @echo "Creating database..."
+    @echo "Creating uploads directory..."
     @mkdir -p uploads
-    @touch dogbox.db
+    @echo "Database will be created automatically on first run"
 
 # Clean build artifacts
 clean:

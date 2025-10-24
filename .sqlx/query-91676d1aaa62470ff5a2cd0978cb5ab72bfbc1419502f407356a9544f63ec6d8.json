@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO posts_content (file_id, content_encrypted, content_order)\n            VALUES (?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "91676d1aaa62470ff5a2cd0978cb5ab72bfbc1419502f407356a9544f63ec6d8"
+}

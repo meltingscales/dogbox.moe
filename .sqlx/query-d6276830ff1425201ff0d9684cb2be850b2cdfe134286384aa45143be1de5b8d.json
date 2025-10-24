@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            DELETE FROM files\n            WHERE is_permanent = 0 AND expires_at <= datetime('now')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "d6276830ff1425201ff0d9684cb2be850b2cdfe134286384aa45143be1de5b8d"
+}

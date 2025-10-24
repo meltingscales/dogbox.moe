@@ -15,10 +15,17 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            padding: 0;
+            margin: 0;
+        }
+
+        .page-wrapper {
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: calc(100vh - 60px);
             padding: 20px;
+            padding-top: 80px;
         }
 
         .container {
@@ -153,8 +160,11 @@
     </style>
 </head>
 <body>
+    <div id="navbar-placeholder"></div>
+
+    <div class="page-wrapper">
     <div class="container">
-        <h1>🐕 dogbox.moe</h1>
+        <h1><span id="page-logo"></span> <span id="page-sitename"></span></h1>
 
         <div class="status loading" id="status">
             <p id="statusText">🔍 Loading encrypted file...</p>
@@ -194,9 +204,39 @@
         </footer>
     </div>
 
+    <script src="/static/js/config.js"></script>
+
+    <!-- Import map for noble-post-quantum dependencies -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@noble/hashes/sha3": "https://unpkg.com/@noble/hashes@1.3.3/esm/sha3.js",
+            "@noble/hashes/sha256": "https://unpkg.com/@noble/hashes@1.3.3/esm/sha256.js",
+            "@noble/hashes/utils": "https://unpkg.com/@noble/hashes@1.3.3/esm/utils.js"
+        }
+    }
+    </script>
+
+    <!-- Post-quantum crypto library (ML-KEM-1024) - pinned version 0.2.0 -->
+    <!-- SHA-256: CeJlciQZTjtmql3xOG0+mocmNKM2nuYlWd0jATqxaNc= -->
+    <script type="module">
+        // Import ML-KEM-1024 from noble-post-quantum using ESM build from unpkg
+        // Using unpkg to avoid CommonJS/ESM compatibility issues with jsDelivr
+        // ML-KEM-1024 provides maximum security: ~256-bit classical, ~192-bit quantum
+        import { ml_kem1024 } from 'https://unpkg.com/@noble/post-quantum@0.2.0/esm/ml-kem.js';
+
+        // Make available globally for non-module scripts
+        window.noblePostQuantum = { ml_kem1024 };
+    </script>
     <script src="/static/js/crypto.js"></script>
     <script>
-        const crypto = new DogboxCrypto();
+        // Initialize page branding
+        if (window.DogboxConfig) {
+            document.getElementById('page-logo').textContent = DogboxConfig.logo;
+            document.getElementById('page-sitename').textContent = DogboxConfig.siteName;
+        }
+
+        const dogboxCrypto = new DogboxCrypto();
         const status = document.getElementById('status');
         const statusText = document.getElementById('statusText');
         const fileInfo = document.getElementById('fileInfo');
@@ -220,7 +260,7 @@
                 }
 
                 // Import key
-                decryptionKey = await crypto.importKey(keyBase64);
+                decryptionKey = await dogboxCrypto.importKey(keyBase64);
 
                 // Download encrypted file
                 const response = await fetch(`/api/files/${fileId}`);
@@ -255,7 +295,7 @@
                 progressText.textContent = 'Decrypting...';
 
                 // Decrypt file
-                const decryptedData = await crypto.decryptFile(encryptedData, decryptionKey);
+                const decryptedData = await dogboxCrypto.decryptFile(encryptedData, decryptionKey);
 
                 progressFill.style.width = '100%';
                 progressText.textContent = 'Starting download...';
@@ -287,6 +327,35 @@
 
         // Initialize on load
         init();
+
+        // Load navbar
+        fetch("/static/navbar.html")
+            .then((response) => response.text())
+            .then((html) => {
+                document.getElementById("navbar-placeholder").innerHTML = html;
+
+                // Set logo and site name from config
+                if (window.DogboxConfig) {
+                    const logoEl = document.getElementById('navbar-logo');
+                    const siteNameEl = document.getElementById('navbar-sitename');
+                    if (logoEl) logoEl.textContent = DogboxConfig.logo;
+                    if (siteNameEl) siteNameEl.textContent = DogboxConfig.siteName;
+                }
+
+                // Check if test mode is enabled
+                fetch('/api/health')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.test_mode) {
+                            const banner = document.getElementById('test-mode-banner');
+                            if (banner) {
+                                banner.classList.add('show');
+                            }
+                        }
+                    })
+                    .catch(err => console.error('Failed to check test mode:', err));
+            });
     </script>
+    </div>
 </body>
 </html>

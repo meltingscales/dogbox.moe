@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT COUNT(*) as \"count!\"\n            FROM files\n            WHERE post_type = 'file' AND (is_permanent = 1 OR expires_at > datetime('now'))\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!",
+        "ordinal": 0,
+        "type_info": "Int"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "63775478e32d05c548c44cc88f306d55125fe39d4493f6786ec56c3ad5b86804"
+}

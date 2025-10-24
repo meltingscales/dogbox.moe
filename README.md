@@ -4,6 +4,10 @@ privacy focused catbox.moe alternative. data privacy model similar to signal
 
 e2e encryption and post quantum crypto
 
+## why?
+
+boredom and to see if i could do it
+
 ## Privacy Model
 
 Inspired by Signal's zero-knowledge architecture:

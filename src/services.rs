@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::constants::MAX_UPLOAD_SIZE;
 use crate::database::Database;
 use crate::error::{AppError, Result};
 use crate::models::{FileRecord, PostType, PostContent, PostContentView, PostViewResponse};
@@ -29,10 +30,10 @@ impl FileService {
         post_type: PostType,
         is_permanent: bool,
     ) -> Result<FileRecord> {
-        // Validate size
-        if data.len() > self.config.max_file_size_bytes() {
+        // Validate size against constant (1 GB)
+        if data.len() > MAX_UPLOAD_SIZE {
             return Err(AppError::FileTooLarge {
-                max_mb: self.config.max_file_size_mb,
+                max_mb: (MAX_UPLOAD_SIZE / (1024 * 1024)) as u64,
             });
         }
 

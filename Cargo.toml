@@ -34,6 +34,9 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
 
+# Synchronization
+once_cell = "1.19"
+
 # Error handling
 anyhow = "1.0"
 thiserror = "1.0"

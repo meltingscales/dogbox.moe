@@ -123,6 +123,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/stats", get(serve_stats))
         // API routes
         .route("/api/health", get(handlers::health))
+        .route("/api/admin-motd", get(handlers::admin_motd))
         .route("/api/stats", get(handlers::stats))
         .route("/api/upload", post(handlers::upload))
         .route("/api/files/:id", get(handlers::download))

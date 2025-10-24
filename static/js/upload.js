@@ -24,14 +24,16 @@ class UploadHandler {
     }
 
     /**
-     * Check if file format is allowed (PNG, WebM, TXT)
+     * Check if file format is allowed (PNG, WebM, TXT, ZIP)
      * MP3 files need conversion to WebM to strip ID3 metadata
      */
     isAllowedFormat(file) {
         const allowed = file.type === 'image/png' ||
                        file.type === 'video/webm' ||
                        file.type === 'audio/webm' ||
-                       file.type === 'text/plain';
+                       file.type === 'text/plain' ||
+                       file.type === 'application/zip' ||
+                       file.type === 'application/x-zip-compressed';
         console.log('[Upload] isAllowedFormat:', file.type, '→', allowed);
         return allowed;
     }
@@ -46,7 +48,7 @@ class UploadHandler {
         const isAllowed = this.isAllowedFormat(file);
 
         if (!isAllowed && !needsConversion) {
-            const msg = 'Unsupported file type. Please upload PNG, WebM, or TXT files, or a file that can be converted (JPEG, MP3, MP4, etc.)';
+            const msg = 'Unsupported file type. Please upload PNG, WebM, TXT, or ZIP files, or a file that can be converted (JPEG, MP3, MP4, etc.)';
             console.error('[Upload] File rejected:', msg);
             alert(msg);
             return;
@@ -193,7 +195,24 @@ class UploadHandler {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('[Upload] Server error response:', errorText);
-                throw new Error("Upload failed: " + response.statusText);
+
+                // Provide more detailed error messages
+                if (response.status === 413) {
+                    const fileSizeMB = (encryptedData.byteLength / (1024 * 1024)).toFixed(2);
+                    const maxSizeBytes = window.maxUploadSize || (1024 * 1024 * 1024); // Get from API or default to 1GB
+                    const maxSizeMB = (maxSizeBytes / (1024 * 1024)).toFixed(0);
+                    const maxSizeGB = (maxSizeBytes / (1024 * 1024 * 1024)).toFixed(1);
+
+                    const sizeLabel = maxSizeBytes >= 1024 * 1024 * 1024 ? `${maxSizeGB} GB` : `${maxSizeMB} MB`;
+
+                    throw new Error(
+                        `File too large: Your encrypted file is ${fileSizeMB} MB. ` +
+                        `Maximum allowed size is ${sizeLabel}. ` +
+                        `Try uploading a smaller file or compressing it into a ZIP archive.`
+                    );
+                } else {
+                    throw new Error("Upload failed: " + response.statusText + (errorText ? " - " + errorText : ""));
+                }
             }
 
             const data = await response.json();

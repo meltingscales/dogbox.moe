@@ -67,9 +67,14 @@
 </style>
 
 <script src="/static/js/config.js"></script>
+<script src="/static/js/banner.js"></script>
 
 <div class="test-mode-banner" id="test-mode-banner">
-    ⚠️ <strong>TEST MODE:</strong> This instance is running in test mode. All data will be automatically deleted every 24 hours to save disk space.
+    ⚠️ <strong>TEST MODE:</strong> This instance is running in test mode. All data will be automatically deleted <span id="test-delete-time"></span> to save disk space.
+</div>
+
+<div class="test-mode-banner" id="admin-message-banner" style="background: #f59e0b; display: none;">
+    <b><p id="admin-message-text" style="margin: 0;"></p></b>
 </div>
 
 <nav class="navbar">

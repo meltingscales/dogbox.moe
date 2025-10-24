@@ -17,7 +17,7 @@ use utoipa::OpenApi;
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(health, upload, download, delete_file, view_post, append_to_post, stats),
+    paths(health, admin_motd, upload, download, delete_file, view_post, append_to_post, stats),
     components(schemas(
         HealthResponse,
         UploadRequest,
@@ -63,11 +63,37 @@ pub struct ApiDoc;
     )
 )]
 pub async fn health(State(config): State<Arc<Config>>) -> Json<HealthResponse> {
+    let next_test_delete = if config.test_delete_24hr {
+        *crate::cleanup::NEXT_TEST_DELETE.read().await
+    } else {
+        None
+    };
+
     Json(HealthResponse {
         status: "ok".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         test_mode: config.test_delete_24hr,
+        next_test_delete,
+        admin_message: config.admin_message.clone(),
+        max_upload_size: crate::constants::MAX_UPLOAD_SIZE,
     })
+}
+
+/// Get admin message of the day (MOTD)
+#[utoipa::path(
+    get,
+    path = "/api/admin-motd",
+    tag = "dogbox.moe",
+    responses(
+        (status = 200, description = "Admin message", body = String),
+        (status = 204, description = "No admin message set")
+    )
+)]
+pub async fn admin_motd(State(config): State<Arc<Config>>) -> impl IntoResponse {
+    match &config.admin_message {
+        Some(msg) => (axum::http::StatusCode::OK, msg.clone()).into_response(),
+        None => axum::http::StatusCode::NO_CONTENT.into_response(),
+    }
 }
 
 /// Upload encrypted file blob

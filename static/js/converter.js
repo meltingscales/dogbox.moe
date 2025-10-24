@@ -25,7 +25,9 @@ class FormatConverter {
         if (type === 'image/png' ||
             type === 'video/webm' ||
             type === 'audio/webm' ||
-            type === 'text/plain') {
+            type === 'text/plain' ||
+            type === 'application/zip' ||
+            type === 'application/x-zip-compressed') {
             return false;
         }
 

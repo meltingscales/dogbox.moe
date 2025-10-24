@@ -111,6 +111,12 @@ pub struct HealthResponse {
     pub status: String,
     pub version: String,
     pub test_mode: bool,
+    /// Timestamp when all data will be deleted (only in test mode)
+    pub next_test_delete: Option<DateTime<Utc>>,
+    /// Optional admin message to display
+    pub admin_message: Option<String>,
+    /// Maximum upload size in bytes
+    pub max_upload_size: usize,
 }
 
 #[derive(Debug, Serialize, ToSchema)]

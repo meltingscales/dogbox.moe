@@ -10,7 +10,7 @@ Inspired by Signal's zero-knowledge architecture:
 
 - **Client-side encryption**: Files are encrypted in the browser before upload
 - **Zero-knowledge server**: Server operators cannot decrypt files without the key
-- **Post-quantum security**: Hybrid encryption using ML-KEM (Kyber) + ChaCha20-Poly1305
+- **Post-quantum security**: Hybrid encryption using ML-KEM-1024 (Kyber) + AES-256-GCM
 - **Key in URL fragment**: Encryption keys never leave the client or touch the server
 - **Automatic expiration**: Files auto-delete after configured period
 - **No tracking**: No analytics, no user accounts, no IP logging
@@ -40,7 +40,7 @@ URL format: https://dogbox.moe/f/{file_id}#{encryption_key}
 
 - **Backend**: Rust + Axum
 - **Database**: SQLite (stores only metadata, not file content)
-- **Crypto**: ML-KEM-768 (post-quantum) + ChaCha20-Poly1305 (classic)
+- **Crypto**: ML-KEM-1024 (post-quantum) + AES-256-GCM (classic)
 - **API**: OpenAPI 3.0 specification
 - **Deployment**: GCP Cloud Run
 - **Build**: Just (command runner)

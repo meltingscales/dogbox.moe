@@ -211,12 +211,12 @@
                 </div>
 
                 <div class="faq-question">
-                    🎯 Why does dogbox only accept PNG and WebM files?
+                    🎯 What file formats does dogbox accept?
                 </div>
                 <div class="faq-answer">
                     <p>
-                        <strong>To guarantee 100% metadata removal.</strong>
-                        dogbox only accepts two formats:
+                        <strong>To guarantee 100% metadata removal,</strong>
+                        dogbox accepts these privacy-safe formats:
                     </p>
                     <ul>
                         <li>
@@ -226,6 +226,12 @@
                         <li>
                             <strong>WebM</strong> - For video and audio (open
                             codec, metadata-stripped)
+                        </li>
+                        <li>
+                            <strong>TXT</strong> - Plain text files (no metadata)
+                        </li>
+                        <li>
+                            <strong>ZIP</strong> - Compressed archives (up to 1GB)
                         </li>
                     </ul>
 
@@ -243,12 +249,12 @@
 
                     <div class="highlight-box">
                         <strong>Automatic Conversion:</strong> If you upload a
-                        JPEG, MP4, or other format, dogbox will offer to convert
+                        JPEG, MP4, MP3, or other format, dogbox will offer to convert
                         it for you (client-side, private): <br />• Images → PNG
                         (lossless) <br />• Videos/Audio → WebM (high quality,
-                        Opus/VP9 codecs) <br /><br />All metadata is stripped
-                        during conversion, which happens entirely in your
-                        browser.
+                        Opus/VP9 codecs) <br />• MP3 → WebM (strips ID3 metadata tags)
+                        <br /><br />All metadata is stripped during conversion,
+                        which happens entirely in your browser.
                     </div>
 
                     <p style="margin-top: 15px">
@@ -297,6 +303,23 @@
                         <li>❌ Analytics or tracking cookies</li>
                         <li>❌ File content (only encrypted blobs)</li>
                         <li>❌ EXIF data (stripped before encryption)</li>
+                    </ul>
+                </div>
+
+                <div class="faq-question">📏 What are the file size limits?</div>
+                <div class="faq-answer">
+                    <ul>
+                        <li>
+                            <strong>Maximum file size:</strong> 1 GB (1,024 MB)
+                        </li>
+                        <li>
+                            <strong>Note:</strong> Files are encrypted before upload,
+                            which adds ~1% overhead to the file size
+                        </li>
+                        <li>
+                            <strong>Tip:</strong> For large files, compress them
+                            into a ZIP archive first
+                        </li>
                     </ul>
                 </div>
 

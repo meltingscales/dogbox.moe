@@ -22,38 +22,35 @@ dogbox.moe implements a **zero-knowledge architecture** inspired by Signal's pri
 
 ## Cryptographic Design
 
-### Current Implementation (Browser-based)
+### Current Implementation (Post-Quantum Hybrid)
 
 ```
 Client Side:
-1. Generate 256-bit AES-GCM key
-2. Encrypt file with AES-GCM (authenticated encryption)
-3. Upload encrypted blob to server
-4. Key stored in URL fragment (#key) - never sent to server
+1. Generate ML-KEM-1024 keypair (NIST FIPS 203)
+2. Perform key encapsulation to derive shared secret
+3. Use shared secret as AES-256-GCM key
+4. Encrypt file with AES-256-GCM (authenticated encryption)
+5. Upload encrypted blob to server
+6. ML-KEM secret key + ciphertext stored in URL fragment (#key) - never sent to server
 
 Server Side:
 1. Receive encrypted blob
-2. Store blob with metadata (size, expiry, hash)
-3. Cannot decrypt without key
+2. Store blob with metadata (size, expiry, BLAKE3 hash)
+3. Cannot decrypt without ML-KEM secret key
 4. Auto-delete after expiration
 ```
 
-### Future Post-Quantum Upgrade
+**Security Level:**
+- ML-KEM-1024: ~256-bit classical security, ~192-bit quantum security
+- Highest security level in NIST FIPS 203 standard
+- Protected against Shor's algorithm (breaks RSA/ECC)
+- AES-256-GCM provides authenticated encryption with 128-bit tags
 
-The current implementation uses AES-GCM for simplicity and browser compatibility. For production deployment with true post-quantum security:
-
-```
-Hybrid Encryption (recommended):
-1. ML-KEM-768 (Kyber) for key encapsulation
-2. ChaCha20-Poly1305 for symmetric encryption
-3. BLAKE3 for hashing
-4. X25519 + ML-KEM for hybrid key exchange
-```
-
-**Implementation via WebAssembly:**
-- Compile `pqcrypto-kyber` to WASM
-- Use in browser for client-side encryption
-- Maintains zero-knowledge property
+**Implementation:**
+- Uses `@noble/post-quantum` library (ESM modules)
+- All crypto operations in browser via Web Crypto API
+- Zero-knowledge architecture maintained
+- Keys prefixed with `DOGBOX_KEY_SYMMETRIC_` for identification
 
 ## Privacy Features
 

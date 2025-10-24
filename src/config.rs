@@ -11,6 +11,7 @@ pub struct Config {
     pub max_expiry_hours: i64,
     pub enable_analytics: bool,
     pub test_delete_24hr: bool,
+    pub admin_message: Option<String>,
 }
 
 impl Config {
@@ -41,6 +42,7 @@ impl Config {
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),
+            admin_message: env::var("ADMIN_MESSAGE").ok(),
         })
     }
 

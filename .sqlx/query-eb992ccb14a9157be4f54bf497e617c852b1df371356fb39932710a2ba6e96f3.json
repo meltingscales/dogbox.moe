@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM posts_content",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "eb992ccb14a9157be4f54bf497e617c852b1df371356fb39932710a2ba6e96f3"
+}

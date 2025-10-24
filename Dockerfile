@@ -2,7 +2,7 @@
 # Optimized for GCP Cloud Run deployment
 
 # Build stage
-FROM rust:1.75-slim as builder
+FROM rust:1.90-slim as builder
 
 WORKDIR /build
 
@@ -32,6 +32,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -61,6 +62,6 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD ["/app/dogbox", "health"] || exit 1
+    CMD curl -f http://localhost:8080/api/health || exit 1
 
 CMD ["/app/dogbox"]

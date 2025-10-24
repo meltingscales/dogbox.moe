@@ -1,7 +1,9 @@
 # Rust
 /target/
 **/*.rs.bk
-Cargo.lock
+# Note: Cargo.lock should be committed for binary projects (which this is)
+# Uncomment the line below only if this becomes a library crate
+# Cargo.lock
 
 # Database
 *.db

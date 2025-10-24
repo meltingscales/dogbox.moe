@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::constants::CLEANUP_INTERVAL_SECS;
 use crate::database::Database;
 use crate::services::FileService;
 use std::time::Duration;
@@ -10,7 +11,7 @@ pub async fn start_cleanup_task(config: Config) -> anyhow::Result<()> {
     let service = FileService::new(config.clone(), db.clone());
 
     // Run cleanup every hour
-    let mut interval = time::interval(Duration::from_secs(3600));
+    let mut interval = time::interval(Duration::from_secs(CLEANUP_INTERVAL_SECS));
 
     // For test mode: track 24hr cycles
     let mut test_mode_interval = if config.test_delete_24hr {

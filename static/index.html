@@ -305,10 +305,10 @@
                     We can convert it for you (client-side, private):
                 </p>
                 <div class="converter-actions">
-                    <button class="btn" onclick="convertAndUpload()">
+                    <button class="btn" onclick="uploadHandler.convertAndUpload(callbacks)">
                         🔄 Convert & Upload
                     </button>
-                    <button class="btn" onclick="cancelConversion()" style="background: #6b7280">
+                    <button class="btn" onclick="uploadHandler.cancelConversion(callbacks)" style="background: #6b7280">
                         Cancel
                     </button>
                 </div>
@@ -447,6 +447,7 @@
         </script>
         <script src="/static/js/crypto.js"></script>
         <script src="/static/js/converter.js"></script>
+        <script src="/static/js/upload.js"></script>
         <script>
             // Initialize page branding
             if (window.DogboxConfig) {
@@ -455,8 +456,12 @@
                 document.getElementById('page-tagline').textContent = DogboxConfig.tagline;
             }
 
+            console.log('[Main] Initializing dogbox upload system...');
+
             const dogboxCrypto = new DogboxCrypto();
             const converter = new FormatConverter();
+            const uploadHandler = new UploadHandler(dogboxCrypto, converter);
+
             const uploadArea = document.getElementById("uploadArea");
             const fileInput = document.getElementById("fileInput");
             const progress = document.getElementById("progress");
@@ -466,7 +471,7 @@
             const shareLink = document.getElementById("shareLink");
             const converterNotice = document.getElementById("converterNotice");
 
-            let pendingFile = null; // Store file waiting for conversion
+            console.log('[Main] Upload system initialized');
 
             // Click to upload
             uploadArea.addEventListener("click", () => fileInput.click());
@@ -486,159 +491,84 @@
                 uploadArea.classList.remove("dragover");
                 const files = e.dataTransfer.files;
                 if (files.length > 0) {
-                    handleFile(files[0]);
+                    console.log('[Main] File dropped:', files[0].name);
+                    uploadHandler.handleFile(files[0], callbacks);
                 }
             });
+
+            // Callback functions for upload handler
+            const callbacks = {
+                showConverterNotice: (file) => {
+                    console.log('[Main] Showing converter notice for:', file.name, file.type);
+                    document.getElementById('originalFileName').textContent = file.name;
+                    document.getElementById('originalFileType').textContent = file.type;
+                    converterNotice.classList.add('show');
+                },
+
+                hideConverterNotice: () => {
+                    console.log('[Main] Hiding converter notice');
+                    converterNotice.classList.remove('show');
+                },
+
+                showProgress: () => {
+                    console.log('[Main] Showing progress bar');
+                    progress.style.display = "block";
+                },
+
+                hideProgress: () => {
+                    console.log('[Main] Hiding progress bar');
+                    progress.style.display = "none";
+                },
+
+                updateProgress: (percent, text) => {
+                    console.log('[Main] Progress update:', percent + '%', text);
+                    progressFill.style.width = percent + "%";
+                    progressText.textContent = text;
+                },
+
+                showResult: (url, data) => {
+                    console.log('[Main] Showing result, URL length:', url.length);
+                    shareLink.value = url;
+                    result.classList.add("show");
+                    updateResultDisplay(data);
+                },
+
+                hideResult: () => {
+                    console.log('[Main] Hiding result');
+                    result.classList.remove("show");
+                },
+
+                resetFileInput: () => {
+                    console.log('[Main] Resetting file input');
+                    fileInput.value = '';
+                },
+
+                getPostType: () => {
+                    const value = document.getElementById("postType").value;
+                    console.log('[Main] getPostType:', value);
+                    return value;
+                },
+
+                getIsPermanent: () => {
+                    const value = document.getElementById("isPermanent").checked;
+                    console.log('[Main] getIsPermanent:', value);
+                    return value;
+                },
+
+                getExpiryHours: () => {
+                    const value = document.getElementById("expiryHours").value;
+                    console.log('[Main] getExpiryHours:', value);
+                    return value;
+                }
+            };
 
             // File selection
             fileInput.addEventListener("change", (e) => {
                 if (e.target.files.length > 0) {
-                    handleFile(e.target.files[0]);
+                    console.log('[Main] File selected:', e.target.files[0].name);
+                    uploadHandler.handleFile(e.target.files[0], callbacks);
                 }
             });
-
-            async function handleFile(file) {
-                // Check if file needs conversion
-                const needsConversion = converter.needsConversion(file);
-
-                // Allowed formats: PNG and WebM
-                const isAllowed = file.type === 'image/png' || file.type === 'video/webm' || file.type === 'audio/webm';
-
-                if (!isAllowed && !needsConversion) {
-                    alert('Unsupported file type. Please upload PNG or WebM files, or a file that can be converted (JPEG, MP4, etc.)');
-                    return;
-                }
-
-                if (needsConversion) {
-                    // Show converter notice
-                    pendingFile = file;
-                    document.getElementById('originalFileName').textContent = file.name;
-                    document.getElementById('originalFileType').textContent = file.type;
-                    converterNotice.classList.add('show');
-                    return;
-                }
-
-                // File is already in correct format, proceed with upload
-                await uploadFile(file);
-            }
-
-            function cancelConversion() {
-                converterNotice.classList.remove('show');
-                pendingFile = null;
-                fileInput.value = ''; // Reset file input
-            }
-
-            async function convertAndUpload() {
-                if (!pendingFile) return;
-
-                try {
-                    converterNotice.classList.remove('show');
-                    result.classList.remove("show");
-                    progress.style.display = "block";
-                    progressFill.style.width = "0%";
-                    progressText.textContent = "Converting file format...";
-
-                    // Convert file with progress tracking
-                    const convertedFile = await converter.convert(pendingFile, (progressInfo) => {
-                        const conversionProgress = progressInfo.progress || 0;
-                        progressFill.style.width = (conversionProgress * 0.5) + "%"; // 0-50%
-                        progressText.textContent = `Converting: ${progressInfo.status}... ${Math.round(conversionProgress)}%`;
-                    });
-
-                    pendingFile = null;
-
-                    // Now upload the converted file
-                    await uploadFile(convertedFile);
-
-                } catch (error) {
-                    alert("Conversion failed: " + error.message);
-                    progress.style.display = "none";
-                    converterNotice.classList.remove('show');
-                    pendingFile = null;
-                }
-            }
-
-            async function uploadFile(file) {
-                try {
-                    result.classList.remove("show");
-                    progress.style.display = "block";
-                    progressFill.style.width = "50%";
-                    progressText.textContent = "Generating encryption key...";
-
-                    // Check if post-quantum library is loaded
-                    if (!window.noblePostQuantum || !window.noblePostQuantum.ml_kem1024) {
-                        throw new Error('Post-quantum library not loaded yet. Please refresh the page and try again.');
-                    }
-
-                    // Generate encryption key
-                    const key = await dogboxCrypto.generateKey();
-                    const keyBase64 = await dogboxCrypto.exportKey(key);
-
-                    progressFill.style.width = "60%";
-                    progressText.textContent = "Encrypting file...";
-
-                    // Encrypt file
-                    const encryptedData = await dogboxCrypto.encryptFile(file, key);
-
-                    progressFill.style.width = "75%";
-                    progressText.textContent = "Uploading encrypted data...";
-
-                    // Get upload options
-                    const postType = document.getElementById("postType").value;
-                    const isPermanent = document.getElementById("isPermanent").checked;
-                    const expiryHours = document.getElementById("expiryHours").value;
-
-                    // Upload to server
-                    const formData = new FormData();
-                    formData.append(
-                        "file",
-                        new Blob([encryptedData]),
-                        "encrypted.bin",
-                    );
-                    formData.append("mime_type", "application/octet-stream");
-                    formData.append("post_type", postType);
-                    formData.append("is_permanent", isPermanent.toString());
-                    if (!isPermanent) {
-                        formData.append("expiry_hours", expiryHours);
-                    }
-
-                    const response = await fetch("/api/upload", {
-                        method: "POST",
-                        body: formData,
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(
-                            "Upload failed: " + response.statusText,
-                        );
-                    }
-
-                    const data = await response.json();
-
-                    progressFill.style.width = "100%";
-                    progressText.textContent = "Complete!";
-
-                    // Construct URL with key in fragment
-                    const url = `${window.location.origin}/f/${data.file_id}#${keyBase64}`;
-                    shareLink.value = url;
-
-                    // Store append key if this is a post
-                    if (data.post_append_key) {
-                        window.lastAppendKey = data.post_append_key;
-                    }
-
-                    setTimeout(() => {
-                        progress.style.display = "none";
-                        result.classList.add("show");
-
-                        // Update result message based on type
-                        updateResultDisplay(data);
-                    }, 500);
-                } catch (error) {
-                    alert("Upload failed: " + error.message);
-                    progress.style.display = "none";
-                }
-            }
 
             function copyLink() {
                 shareLink.select();

@@ -3,6 +3,7 @@ use axum::{
     Router,
     response::{Html, IntoResponse},
     http::StatusCode,
+    extract::DefaultBodyLimit,
 };
 use std::net::SocketAddr;
 use tower_http::cors::{CorsLayer, Any};
@@ -14,6 +15,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 mod cleanup;
 mod config;
+mod constants;
 mod database;
 mod error;
 mod handlers;
@@ -21,6 +23,7 @@ mod models;
 mod services;
 
 use config::Config;
+use constants::{MAX_UPLOAD_SIZE, DOGBOX_EMOJI};
 use database::Database;
 
 async fn serve_index() -> impl IntoResponse {
@@ -130,13 +133,14 @@ async fn main() -> anyhow::Result<()> {
         .nest_service("/static", ServeDir::new("static"))
         // API docs
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", handlers::ApiDoc::openapi()))
+        .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(app_state);
 
     // Start server
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    tracing::info!("🐕🐾🦴💨 dogbox.moe listening on {}", addr);
+    tracing::info!("{} dogbox.moe listening on {}", DOGBOX_EMOJI, addr);
     tracing::info!("📖 API docs available at http://{}/docs", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;

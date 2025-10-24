@@ -28,7 +28,7 @@ Inspired by Signal's zero-knowledge architecture:
 │ 1. Generate │                    │             │
 │    key      │                    │             │
 │             │                    │             │
-│ 2. Encrypt  │  ─── upload ───>  │ 3. Store    │
+│ 2. Encrypt  │  ─── upload ────>  │ 3. Store    │
 │    file     │      blob          │    blob     │
 │             │                    │             │
 │ 4. Key in   │  <── file_id ───   │             │

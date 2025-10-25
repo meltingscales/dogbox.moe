@@ -117,11 +117,6 @@ vm-create PROJECT_ID ZONE="us-central1-a":
         --allow=tcp:443 \
         --target-tags=https-server \
         --description="Allow HTTPS traffic on port 443" 2>/dev/null || echo "✓ HTTPS firewall rule already exists"
-    @gcloud compute firewall-rules create allow-http-8080 \
-        --project={{PROJECT_ID}} \
-        --allow=tcp:8080 \
-        --target-tags=http-server \
-        --description="Allow HTTP traffic on port 8080" 2>/dev/null || echo "✓ Port 8080 firewall rule already exists"
 
 # Deploy to GCP VM
 deploy PROJECT_ID ZONE="us-central1-a": sqlx-prepare (vm-create PROJECT_ID ZONE)

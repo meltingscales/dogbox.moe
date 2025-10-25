@@ -12,6 +12,8 @@ Environment="UPLOAD_DIR=/opt/dogbox/data/uploads"
 Environment="HOST=0.0.0.0"
 Environment="PORT=8080"
 Environment="RUST_LOG=dogbox=info"
+Environment="TEST_DELETE_24HR=true"
+Environment="ADMIN_MESSAGE=Hey, melty here. This is in 24-hr reset mode because I'm cheap. Go host it yourself, see my source code for details."
 ExecStart=/opt/dogbox/dogbox
 Restart=always
 RestartSec=5

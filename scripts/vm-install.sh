@@ -38,6 +38,7 @@ cd /opt/dogbox
 sudo sqlite3 /opt/dogbox/data/dogbox.db < migrations/000_migrations.sql 2>/dev/null || true
 sudo sqlite3 /opt/dogbox/data/dogbox.db < migrations/001_init.sql 2>/dev/null || true
 sudo sqlite3 /opt/dogbox/data/dogbox.db < migrations/002_post_types.sql 2>/dev/null || true
+sudo sqlite3 /opt/dogbox/data/dogbox.db < migrations/003_file_extension.sql 2>/dev/null || true
 echo "✓ Database migrations complete"
 
 # Set ownership and permissions (do this before starting service)

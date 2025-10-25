@@ -127,6 +127,7 @@ pub async fn upload(
     let mut expiry_hours: Option<i64> = None;
     let mut post_type: Option<PostType> = None;
     let mut is_permanent: Option<bool> = None;
+    let mut file_extension: Option<String> = None;
 
     // Parse multipart form data
     while let Some(field) = multipart.next_field().await.map_err(|e| {
@@ -175,6 +176,11 @@ pub async fn upload(
                     AppError::BadRequest("Invalid is_permanent value".to_string())
                 })?);
             }
+            "file_extension" => {
+                file_extension = Some(field.text().await.map_err(|e| {
+                    AppError::BadRequest(format!("Failed to read file_extension: {}", e))
+                })?);
+            }
             _ => {}
         }
     }
@@ -185,7 +191,7 @@ pub async fn upload(
 
     // Store encrypted file
     let file = service
-        .store_file(data, filename_encrypted, mime_type, expiry_hours, final_post_type, final_is_permanent)
+        .store_file(data, filename_encrypted, mime_type, expiry_hours, final_post_type, final_is_permanent, file_extension)
         .await?;
 
     Ok(Json(UploadResponse {
@@ -223,12 +229,23 @@ pub async fn download(
 
     let (file, data) = service.retrieve_file(&id).await?;
 
-    // Create headers with MIME type so client can determine file extension
+    // Create headers with MIME type and filename
     let mut headers = HeaderMap::new();
     if let Some(mime_type) = &file.mime_type {
         if let Ok(header_value) = mime_type.parse() {
             headers.insert(header::CONTENT_TYPE, header_value);
         }
+    }
+
+    // Set Content-Disposition with file extension for better download experience
+    let filename = if let Some(ext) = &file.file_extension {
+        format!("file{}", if ext.starts_with('.') { ext.clone() } else { format!(".{}", ext) })
+    } else {
+        "file".to_string()
+    };
+
+    if let Ok(header_value) = format!("attachment; filename=\"{}\"", filename).parse() {
+        headers.insert(header::CONTENT_DISPOSITION, header_value);
     }
 
     Ok((headers, Bytes::from(data)))

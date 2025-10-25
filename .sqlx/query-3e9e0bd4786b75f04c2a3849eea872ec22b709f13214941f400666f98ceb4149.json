@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT id, filename_encrypted, size_bytes, mime_type,\n                   uploaded_at as \"uploaded_at: DateTime<Utc>\",\n                   expires_at as \"expires_at: DateTime<Utc>\",\n                   deletion_token, storage_path, blake3_hash,\n                   created_at as \"created_at: DateTime<Utc>\",\n                   post_type, post_append_key,\n                   is_permanent as \"is_permanent: bool\",\n                   view_count\n            FROM files\n            WHERE id = ? AND (is_permanent = 1 OR expires_at > datetime('now'))\n            ",
+  "query": "\n            SELECT id, filename_encrypted, size_bytes, mime_type,\n                   uploaded_at as \"uploaded_at: DateTime<Utc>\",\n                   expires_at as \"expires_at: DateTime<Utc>\",\n                   deletion_token, storage_path, blake3_hash,\n                   created_at as \"created_at: DateTime<Utc>\",\n                   post_type, post_append_key,\n                   is_permanent as \"is_permanent: bool\",\n                   view_count,\n                   file_extension\n            FROM files\n            WHERE blake3_hash = ? AND (is_permanent = 1 OR expires_at > datetime('now'))\n            ",
   "describe": {
     "columns": [
       {
@@ -72,6 +72,11 @@
         "name": "view_count",
         "ordinal": 13,
         "type_info": "Int64"
+      },
+      {
+        "name": "file_extension",
+        "ordinal": 14,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -91,8 +96,9 @@
       false,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "7bba87a2952197207fd9ce715f29eb8941a1ae82d8c3437b2a0c73ac083bca18"
+  "hash": "3e9e0bd4786b75f04c2a3849eea872ec22b709f13214941f400666f98ceb4149"
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO files (\n                id, filename_encrypted, size_bytes, mime_type,\n                uploaded_at, expires_at, deletion_token, storage_path,\n                blake3_hash, post_type, post_append_key, is_permanent, view_count, file_extension\n            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 14
+    },
+    "nullable": []
+  },
+  "hash": "eed5aecb69e35df54d708155f5a9c44a69bc92a77a8b7bdd041162787a12aeb1"
+}

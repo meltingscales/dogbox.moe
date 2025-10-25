@@ -32,8 +32,8 @@ impl Database {
             INSERT INTO files (
                 id, filename_encrypted, size_bytes, mime_type,
                 uploaded_at, expires_at, deletion_token, storage_path,
-                blake3_hash, post_type, post_append_key, is_permanent, view_count
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                blake3_hash, post_type, post_append_key, is_permanent, view_count, file_extension
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
             file.id,
             file.filename_encrypted,
@@ -48,6 +48,7 @@ impl Database {
             file.post_append_key,
             file.is_permanent,
             file.view_count,
+            file.file_extension,
         )
         .execute(&self.pool)
         .await?;
@@ -66,7 +67,8 @@ impl Database {
                    created_at as "created_at: DateTime<Utc>",
                    post_type, post_append_key,
                    is_permanent as "is_permanent: bool",
-                   view_count
+                   view_count,
+                   file_extension
             FROM files
             WHERE id = ? AND (is_permanent = 1 OR expires_at > datetime('now'))
             "#,
@@ -117,7 +119,8 @@ impl Database {
                    created_at as "created_at: DateTime<Utc>",
                    post_type, post_append_key,
                    is_permanent as "is_permanent: bool",
-                   view_count
+                   view_count,
+                   file_extension
             FROM files
             WHERE blake3_hash = ? AND (is_permanent = 1 OR expires_at > datetime('now'))
             "#,

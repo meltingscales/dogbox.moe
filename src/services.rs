@@ -29,6 +29,7 @@ impl FileService {
         expiry_hours: Option<i64>,
         post_type: PostType,
         is_permanent: bool,
+        file_extension: Option<String>,
     ) -> Result<FileRecord> {
         // Validate size against constant (1 GB)
         if data.len() > MAX_UPLOAD_SIZE {
@@ -83,6 +84,7 @@ impl FileService {
             blake3_hash,
             post_type,
             is_permanent,
+            file_extension,
         );
 
         self.db.create_file(&file_record).await?;

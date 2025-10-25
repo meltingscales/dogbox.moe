@@ -54,6 +54,7 @@ pub struct FileRecord {
     pub post_append_key: Option<String>,
     pub is_permanent: bool,
     pub view_count: i64,
+    pub file_extension: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -176,6 +177,7 @@ impl FileRecord {
         blake3_hash: String,
         post_type: PostType,
         is_permanent: bool,
+        file_extension: Option<String>,
     ) -> Self {
         let post_append_key = if post_type == PostType::Post {
             Some(format!("DOGBOX_KEY_APPEND_{}", Uuid::new_v4()))
@@ -198,6 +200,7 @@ impl FileRecord {
             post_append_key,
             is_permanent,
             view_count: 0,
+            file_extension,
         }
     }
 

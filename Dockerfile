@@ -12,15 +12,27 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy manifests
+# Copy manifests first for dependency caching
 COPY Cargo.toml Cargo.lock ./
+
+# Copy SQLx query metadata for offline compilation
+COPY .sqlx ./.sqlx
+
+# Build dependencies only (leverage Docker layer caching)
+# This layer will be cached unless Cargo.toml or Cargo.lock changes
+RUN mkdir -p src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo build --release && \
+    rm -rf src
 
 # Copy source code
 COPY src ./src
 COPY migrations ./migrations
 COPY static ./static
 
-# Build release binary
+# Build release binary (SQLx offline mode)
+# This will reuse the cached dependencies from above
+ENV SQLX_OFFLINE=true
 RUN cargo build --release
 
 # Runtime stage

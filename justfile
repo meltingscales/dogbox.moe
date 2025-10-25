@@ -37,7 +37,7 @@ dev-test:
     TEST_DELETE_24HR=true RUST_LOG=dogbox=debug,tower_http=debug cargo run
 
 # Build for production
-build:
+build: sqlx-prepare
     cargo build --release
 
 # Run tests
@@ -59,6 +59,25 @@ migrate:
     @mkdir -p uploads
     @echo "Database will be created automatically on first run"
 
+# Prepare SQLx offline query cache (needed for Docker builds)
+sqlx-prepare:
+    @echo "Checking SQLx query cache..."
+    @if [ ! -d .sqlx ] || [ -z "$(ls -A .sqlx 2>/dev/null)" ]; then \
+        echo "SQLx cache missing or empty, preparing..."; \
+        if [ ! -f dogbox.db ]; then just dev-db-init; fi; \
+        cargo sqlx prepare --database-url sqlite:./dogbox.db; \
+        echo "✓ SQLx cache updated in .sqlx/ directory"; \
+    else \
+        echo "✓ SQLx cache already exists"; \
+    fi
+
+# Force regenerate SQLx cache (use after changing database queries)
+sqlx-prepare-force:
+    @echo "Force regenerating SQLx query cache..."
+    @if [ ! -f dogbox.db ]; then just dev-db-init; fi
+    cargo sqlx prepare --database-url sqlite:./dogbox.db
+    @echo "✓ SQLx cache regenerated in .sqlx/ directory"
+
 # Clean build artifacts
 clean:
     cargo clean
@@ -70,7 +89,7 @@ watch:
     cargo watch -x run
 
 # Build Docker image
-docker-build:
+docker-build: sqlx-prepare
     docker build -t dogbox:latest .
 
 # Run Docker container locally
@@ -78,7 +97,7 @@ docker-run:
     docker run -p 8080:8080 -v $(pwd)/uploads:/app/uploads dogbox:latest
 
 # Deploy to GCP Cloud Run
-deploy PROJECT_ID REGION="us-central1":
+deploy PROJECT_ID REGION="us-central1": sqlx-prepare
     @echo "Building for GCP Cloud Run..."
     gcloud builds submit --tag gcr.io/{{PROJECT_ID}}/dogbox
     @echo "Deploying to Cloud Run..."

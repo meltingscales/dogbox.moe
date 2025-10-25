@@ -6,9 +6,8 @@
   4. ✅ Unbounded database queries - FIXED: Added MAX_POST_CONTENT_ENTRIES limit (1000)
   5. ✅ CDN libraries without SRI - FIXED: Self-hosted all @noble crypto libraries
 
-  🟠 High Severity: 6 Remaining, 1 Fixed ✅
+  🟠 High Severity: 5 Remaining, 1 Fixed ✅
 
-  - Weak random token generation
   - No authentication for /api/stats endpoint
   - ✅ Missing security headers - FIXED: Added CSP, X-Frame-Options, HSTS, etc.
   - File size validated after loading into memory

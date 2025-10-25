@@ -58,10 +58,56 @@
         opacity: 0.8;
     }
 
+    .navbar-toggle {
+        display: none;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5em;
+        cursor: pointer;
+        padding: 5px;
+    }
+
     @media (max-width: 768px) {
+        .navbar-toggle {
+            display: block;
+        }
+
         .navbar-nav {
-            gap: 15px;
-            font-size: 0.9em;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(102, 126, 234, 0.98);
+            flex-direction: column;
+            gap: 0;
+            padding: 10px 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .navbar-nav.show {
+            display: flex;
+        }
+
+        .navbar-nav li {
+            width: 100%;
+        }
+
+        .navbar-link {
+            display: block;
+            padding: 15px 20px;
+            width: 100%;
+            text-align: left;
+        }
+
+        .navbar-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 1;
+        }
+
+        .navbar {
+            position: relative;
         }
     }
 </style>
@@ -82,7 +128,10 @@
         <a href="/" class="navbar-brand" id="navbar-brand-link">
             <span id="navbar-logo"></span> <span id="navbar-sitename"></span>
         </a>
-        <ul class="navbar-nav">
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Toggle navigation">
+            ☰
+        </button>
+        <ul class="navbar-nav" id="navbar-nav">
             <li><a href="/" class="navbar-link">Upload</a></li>
             <li><a href="/faq" class="navbar-link">FAQ</a></li>
             <li><a href="/post-types" class="navbar-link">Post Types</a></li>
@@ -92,3 +141,32 @@
         </ul>
     </div>
 </nav>
+
+<script>
+    // Mobile navbar toggle
+    document.addEventListener('DOMContentLoaded', function() {
+        const navbarToggle = document.getElementById('navbar-toggle');
+        const navbarNav = document.getElementById('navbar-nav');
+
+        if (navbarToggle && navbarNav) {
+            navbarToggle.addEventListener('click', function() {
+                navbarNav.classList.toggle('show');
+            });
+
+            // Close menu when clicking a link
+            const navLinks = navbarNav.querySelectorAll('.navbar-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    navbarNav.classList.remove('show');
+                });
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!navbarToggle.contains(event.target) && !navbarNav.contains(event.target)) {
+                    navbarNav.classList.remove('show');
+                }
+            });
+        }
+    });
+</script>

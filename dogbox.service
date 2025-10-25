@@ -1,0 +1,20 @@
+[Unit]
+Description=Dogbox file sharing service
+After=network.target
+
+[Service]
+Type=simple
+User=dogbox
+Group=dogbox
+WorkingDirectory=/opt/dogbox
+Environment="DATABASE_URL=sqlite:/opt/dogbox/data/dogbox.db"
+Environment="UPLOAD_DIR=/opt/dogbox/data/uploads"
+Environment="HOST=0.0.0.0"
+Environment="PORT=8080"
+Environment="RUST_LOG=dogbox=info"
+ExecStart=/opt/dogbox/dogbox
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

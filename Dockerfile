@@ -50,14 +50,15 @@ RUN apt-get update && apt-get install -y \
 # Create non-root user
 RUN useradd -m -u 1000 dogbox
 
-# Copy binary from builder
+# Copy binary and scripts from builder
 COPY --from=builder /build/target/release/dogbox /app/dogbox
+COPY entrypoint.sh /app/entrypoint.sh
 
 # Copy static files
 COPY static /app/static
 
-# Set ownership
-RUN chown -R dogbox:dogbox /app
+# Set ownership and make entrypoint executable
+RUN chown -R dogbox:dogbox /app && chmod +x /app/entrypoint.sh
 
 USER dogbox
 
@@ -74,4 +75,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/api/health || exit 1
 
-CMD ["/app/dogbox"]
+CMD ["/app/entrypoint.sh"]

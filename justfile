@@ -88,37 +88,95 @@ clean:
 watch:
     cargo watch -x run
 
-# Build Docker image
-docker-build: sqlx-prepare
-    docker build -t dogbox:latest .
+# Create GCP VM if it doesn't exist
+vm-create PROJECT_ID ZONE="us-central1-a":
+    @echo "Checking if VM exists..."
+    @if gcloud compute instances describe dogbox --project={{PROJECT_ID}} --zone={{ZONE}} 2>/dev/null; then \
+        echo "✓ VM 'dogbox' already exists"; \
+    else \
+        echo "Creating VM 'dogbox'..."; \
+        gcloud compute instances create dogbox \
+            --project={{PROJECT_ID}} \
+            --zone={{ZONE}} \
+            --machine-type=e2-micro \
+            --boot-disk-size=200GB \
+            --boot-disk-type=pd-standard \
+            --image-family=debian-12 \
+            --image-project=debian-cloud \
+            --tags=http-server,https-server; \
+        echo "✓ VM created"; \
+    fi
+    @echo "Configuring firewall rules..."
+    @gcloud compute firewall-rules create allow-http \
+        --project={{PROJECT_ID}} \
+        --allow=tcp:80 \
+        --target-tags=http-server \
+        --description="Allow HTTP traffic on port 80" 2>/dev/null || echo "✓ HTTP firewall rule already exists"
+    @gcloud compute firewall-rules create allow-https \
+        --project={{PROJECT_ID}} \
+        --allow=tcp:443 \
+        --target-tags=https-server \
+        --description="Allow HTTPS traffic on port 443" 2>/dev/null || echo "✓ HTTPS firewall rule already exists"
+    @gcloud compute firewall-rules create allow-http-8080 \
+        --project={{PROJECT_ID}} \
+        --allow=tcp:8080 \
+        --target-tags=http-server \
+        --description="Allow HTTP traffic on port 8080" 2>/dev/null || echo "✓ Port 8080 firewall rule already exists"
 
-# Run Docker container locally
-docker-run:
-    docker run -p 8080:8080 -v $(pwd)/uploads:/app/uploads dogbox:latest
+# Deploy to GCP VM
+deploy PROJECT_ID ZONE="us-central1-a": sqlx-prepare (vm-create PROJECT_ID ZONE)
+    @echo "Building release binary..."
+    SQLX_OFFLINE=true cargo build --release
+    @echo "Copying files to VM..."
+    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} target/release/dogbox dogbox:/tmp/
+    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} --recurse static dogbox:/tmp/
+    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} --recurse migrations dogbox:/tmp/
+    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} dogbox.service dogbox:/tmp/
+    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} scripts/vm-install.sh dogbox:/tmp/
+    @echo "Running installation script..."
+    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --command='bash /tmp/vm-install.sh'
+    @echo ""
+    @echo "✓ Deployment complete!"
+    @echo "Service URL: http://$(gcloud compute instances describe dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --format='get(networkInterfaces[0].accessConfigs[0].natIP)'):8080"
 
-# Deploy to GCP Cloud Run (ephemeral /tmp storage - data lost on restart!)
-deploy PROJECT_ID REGION="us-central1": sqlx-prepare
-    @echo "Building for GCP Cloud Run..."
-    gcloud builds submit --tag gcr.io/{{PROJECT_ID}}/dogbox
-    @echo "Deploying to Cloud Run with ephemeral storage..."
-    @echo "⚠️  WARNING: Using /tmp storage - all data will be lost on container restart!"
-    gcloud run deploy dogbox \
-        --image gcr.io/{{PROJECT_ID}}/dogbox \
-        --platform managed \
-        --region {{REGION}} \
-        --allow-unauthenticated \
-        --set-env-vars "DATABASE_URL=sqlite:/tmp/dogbox.db,UPLOAD_DIR=/tmp/uploads,RUST_LOG=dogbox=info,ADMIN_MESSAGE=⚠️ DEMO MODE: All data is ephemeral and will be lost on restart!" \
-        --memory 512Mi \
-        --max-instances 10 \
-        --execution-environment gen2 \
-        --timeout 300
+# SSH into the VM
+vm-ssh PROJECT_ID ZONE="us-central1-a":
+    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
+
+# View VM logs
+vm-logs PROJECT_ID ZONE="us-central1-a":
+    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --command='sudo journalctl -u dogbox -f'
+
+# Setup nginx with SSL on VM (run after DNS is pointed to VM)
+vm-setup-ssl PROJECT_ID ZONE="us-central1-a":
+    @echo "Copying nginx configuration and setup script..."
+    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} nginx.conf dogbox:/tmp/
+    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} scripts/vm-setup-nginx.sh dogbox:/tmp/
+    @echo "Running nginx setup script..."
+    @echo "⚠️  Make sure dogbox.moe DNS is already pointing to the VM IP!"
+    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --command='bash /tmp/vm-setup-nginx.sh'
+    @echo ""
+    @echo "✓ SSL setup complete! Your site should now be available at https://dogbox.moe"
+
+# Stop the VM
+vm-stop PROJECT_ID ZONE="us-central1-a":
+    gcloud compute instances stop dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
+
+# Start the VM
+vm-start PROJECT_ID ZONE="us-central1-a":
+    gcloud compute instances start dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
+
+# Delete the VM
+vm-delete PROJECT_ID ZONE="us-central1-a":
+    @echo "⚠️  This will delete the VM and all data!"
+    @read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
+    gcloud compute instances delete dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
 
 # Setup GCP project
 setup-gcp PROJECT_ID:
     @echo "Enabling required GCP services..."
     gcloud config set project {{PROJECT_ID}}
-    gcloud services enable run.googleapis.com
-    gcloud services enable cloudbuild.googleapis.com
+    gcloud services enable compute.googleapis.com
     @echo "GCP setup complete!"
 
 # Generate API client (using OpenAPI spec)

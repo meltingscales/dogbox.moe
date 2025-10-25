@@ -189,6 +189,24 @@
                         <div class="stat-value" id="storage-mb">0 MB</div>
                         <div class="stat-label">Encrypted Storage Used</div>
                     </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">💿</div>
+                        <div class="stat-value" id="disk-total">0 GB</div>
+                        <div class="stat-label">Total Disk Space</div>
+                    </div>
+
+                    <div class="stat-card alt">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value" id="disk-used">0 GB</div>
+                        <div class="stat-label">Disk Used</div>
+                    </div>
+
+                    <div class="stat-card alt2">
+                        <div class="stat-icon">✨</div>
+                        <div class="stat-value" id="disk-free">0 GB</div>
+                        <div class="stat-label">Disk Free</div>
+                    </div>
                 </div>
 
                 <div class="note">
@@ -234,6 +252,12 @@
                     document.getElementById("total-views").textContent = data.total_views.toLocaleString();
                     document.getElementById("storage-mb").textContent =
                         data.storage_mb.toFixed(2) + " MB";
+                    document.getElementById("disk-total").textContent =
+                        data.disk_total_gb.toFixed(1) + " GB";
+                    document.getElementById("disk-used").textContent =
+                        data.disk_used_gb.toFixed(1) + " GB";
+                    document.getElementById("disk-free").textContent =
+                        data.disk_free_gb.toFixed(1) + " GB";
 
                     // Show stats
                     loading.style.display = "none";

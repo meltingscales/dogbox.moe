@@ -38,7 +38,7 @@ dev-test:
 
 # Build for production
 build: sqlx-prepare
-    cargo build --release
+    RUSTFLAGS="-D warnings" cargo build --release
 
 # Run tests
 test:
@@ -121,7 +121,7 @@ vm-create PROJECT_ID ZONE="us-central1-a":
 # Deploy to GCP VM
 deploy PROJECT_ID ZONE="us-central1-a": sqlx-prepare (vm-create PROJECT_ID ZONE)
     @echo "Building release binary..."
-    SQLX_OFFLINE=true cargo build --release
+    SQLX_OFFLINE=true RUSTFLAGS="-D warnings" cargo build --release
     @echo "Copying files to VM..."
     gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} target/release/dogbox dogbox:/tmp/
     gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} --recurse static dogbox:/tmp/

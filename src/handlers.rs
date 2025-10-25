@@ -345,6 +345,23 @@ pub async fn stats(
 
     let (total, posts, files, permanent, temporary, views, bytes) = db.get_stats().await?;
 
+    // Get disk space information for root filesystem
+    let (disk_total_gb, disk_used_gb, disk_free_gb) = match nix::sys::statvfs::statvfs("/") {
+        Ok(stats) => {
+            let block_size = stats.block_size() as f64;
+            let total_blocks = stats.blocks() as f64;
+            let free_blocks = stats.blocks_free() as f64;
+
+            let total_bytes = total_blocks * block_size;
+            let free_bytes = free_blocks * block_size;
+            let used_bytes = total_bytes - free_bytes;
+
+            let gb = 1024.0 * 1024.0 * 1024.0;
+            (total_bytes / gb, used_bytes / gb, free_bytes / gb)
+        },
+        Err(_) => (0.0, 0.0, 0.0),
+    };
+
     Ok(Json(StatsResponse {
         total_uploads: total,
         total_posts: posts,
@@ -353,5 +370,8 @@ pub async fn stats(
         temporary_count: temporary,
         total_views: views,
         storage_mb: (bytes as f64) / (1024.0 * 1024.0),
+        disk_total_gb,
+        disk_used_gb,
+        disk_free_gb,
     }))
 }

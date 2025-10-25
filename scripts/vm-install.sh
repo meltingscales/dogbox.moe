@@ -31,13 +31,13 @@ sudo rm -rf /opt/dogbox/static /opt/dogbox/migrations
 sudo mv /tmp/static /opt/dogbox/static
 sudo mv /tmp/migrations /opt/dogbox/migrations
 
-# Initialize database with migrations
+# Initialize database with migrations (ignore errors for existing tables/columns)
 echo "Creating database and running migrations..."
 sudo touch /opt/dogbox/data/dogbox.db
 cd /opt/dogbox
-sudo sqlite3 /opt/dogbox/data/dogbox.db < migrations/000_migrations.sql
-sudo sqlite3 /opt/dogbox/data/dogbox.db < migrations/001_init.sql
-sudo sqlite3 /opt/dogbox/data/dogbox.db < migrations/002_post_types.sql
+sudo sqlite3 /opt/dogbox/data/dogbox.db < migrations/000_migrations.sql 2>/dev/null || true
+sudo sqlite3 /opt/dogbox/data/dogbox.db < migrations/001_init.sql 2>/dev/null || true
+sudo sqlite3 /opt/dogbox/data/dogbox.db < migrations/002_post_types.sql 2>/dev/null || true
 echo "✓ Database migrations complete"
 
 # Set ownership and permissions (do this before starting service)

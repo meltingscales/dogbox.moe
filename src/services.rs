@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::constants::MAX_UPLOAD_SIZE;
 use crate::database::Database;
 use crate::error::{AppError, Result};
-use crate::models::{FileRecord, PostType, PostContent, PostContentView, PostViewResponse};
+use crate::models::{FileRecord, PostType, PostContentView, PostViewResponse};
 use blake3;
 use chrono::{Duration, Utc};
 use std::path::PathBuf;

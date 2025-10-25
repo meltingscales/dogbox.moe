@@ -51,6 +51,7 @@ dotenvy = "0.15"
 # OpenAPI
 utoipa = { version = "4", features = ["axum_extras", "chrono", "uuid"] }
 utoipa-swagger-ui = { version = "6", features = ["axum"] }
+nix = { version = "0.30.1", features = ["fs"] }
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["multipart"] }

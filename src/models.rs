@@ -58,25 +58,6 @@ pub struct FileRecord {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UploadRequest {
-    /// Optional encrypted filename (client decides whether to encrypt this)
-    #[schema(example = "encrypted_filename_blob")]
-    pub filename: Option<String>,
-
-    /// MIME type hint (of encrypted blob, typically application/octet-stream)
-    #[schema(example = "application/octet-stream")]
-    pub mime_type: Option<String>,
-
-    /// Hours until automatic deletion (max configured on server)
-    #[schema(example = 24)]
-    pub expiry_hours: Option<i64>,
-
-    /// Type of upload: 'file' or 'post'
-    #[schema(example = "file")]
-    pub post_type: Option<PostType>,
-
-    /// Make upload permanent (never expires)
-    #[schema(example = false)]
-    pub is_permanent: Option<bool>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -134,6 +115,9 @@ pub struct StatsResponse {
     pub temporary_count: i64,
     pub total_views: i64,
     pub storage_mb: f64,
+    pub disk_total_gb: f64,
+    pub disk_used_gb: f64,
+    pub disk_free_gb: f64,
 }
 
 

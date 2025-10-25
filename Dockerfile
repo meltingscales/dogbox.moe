@@ -48,9 +48,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN useradd -m -u 1000 dogbox && \
-    mkdir -p /data/uploads && \
-    chown -R dogbox:dogbox /data
+RUN useradd -m -u 1000 dogbox
 
 # Copy binary from builder
 COPY --from=builder /build/target/release/dogbox /app/dogbox
@@ -63,11 +61,11 @@ RUN chown -R dogbox:dogbox /app
 
 USER dogbox
 
-# Environment variables
+# Environment variables (defaults - can be overridden)
 ENV HOST=0.0.0.0
 ENV PORT=8080
-ENV DATABASE_URL=sqlite:/data/dogbox.db
-ENV UPLOAD_DIR=/data/uploads
+ENV DATABASE_URL=sqlite:/tmp/dogbox.db
+ENV UPLOAD_DIR=/tmp/uploads
 ENV RUST_LOG=dogbox=info
 
 EXPOSE 8080

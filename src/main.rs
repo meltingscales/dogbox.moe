@@ -4,6 +4,7 @@ use axum::{
     response::{Html, IntoResponse},
     http::StatusCode,
     extract::DefaultBodyLimit,
+    middleware as axum_middleware,
 };
 use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
@@ -23,6 +24,7 @@ mod constants;
 mod database;
 mod error;
 mod handlers;
+mod middleware;
 mod models;
 mod services;
 
@@ -143,8 +145,11 @@ async fn main() -> anyhow::Result<()> {
         .nest_service("/static", ServeDir::new("static"))
         // API docs
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", handlers::ApiDoc::openapi()))
+        // SECURITY: Middleware layers (order matters - applied bottom to top)
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE))
         .layer(TraceLayer::new_for_http())
+        .layer(axum_middleware::from_fn(middleware::security_headers))
+        .layer(axum_middleware::from_fn(middleware::csrf_protection))
         // .layer(rate_limit_layer)  // TEMPORARILY DISABLED
         .with_state(app_state);
 

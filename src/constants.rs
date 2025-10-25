@@ -9,3 +9,6 @@ pub const DOGBOX_EMOJI: &str = "🐕🐾🦴💨";
 
 /// Cleanup task interval in seconds (1 hour)
 pub const CLEANUP_INTERVAL_SECS: u64 = 3600;
+
+/// Maximum number of content entries per post (prevents memory exhaustion)
+pub const MAX_POST_CONTENT_ENTRIES: i64 = 1000;

@@ -6,12 +6,15 @@ use axum::{
     extract::DefaultBodyLimit,
 };
 use std::net::SocketAddr;
-use tower_http::cors::{CorsLayer, Any};
 use tower_http::trace::TraceLayer;
 use tower_http::services::ServeDir;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use tower_governor::{
+    governor::GovernorConfigBuilder,
+    GovernorLayer,
+};
 
 mod cleanup;
 mod config;
@@ -106,11 +109,16 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // Configure CORS for browser uploads
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    // SECURITY: Rate limiting - 100 requests per minute per IP
+    let rate_limit_config = GovernorConfigBuilder::default()
+        .per_second(2) // 2 requests per second
+        .burst_size(10) // Allow burst of 10
+        .finish()
+        .ok_or_else(|| anyhow::anyhow!("Failed to build rate limit config"))?;
+
+    let rate_limit_layer = GovernorLayer {
+        config: std::sync::Arc::new(rate_limit_config),
+    };
 
     // Build router
     let app = Router::new()
@@ -136,7 +144,7 @@ async fn main() -> anyhow::Result<()> {
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", handlers::ApiDoc::openapi()))
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE))
         .layer(TraceLayer::new_for_http())
-        .layer(cors)
+        .layer(rate_limit_layer)
         .with_state(app_state);
 
     // Start server

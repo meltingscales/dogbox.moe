@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::constants::MAX_UPLOAD_SIZE;
+use crate::constants::{MAX_UPLOAD_SIZE, MAX_POST_CONTENT_ENTRIES};
 use crate::database::Database;
 use crate::error::{AppError, Result};
 use crate::models::{FileRecord, PostType, PostContentView, PostViewResponse};
@@ -64,7 +64,15 @@ impl FileService {
             // Posts store content in database, not on disk
             format!("post:{}", file_id)
         } else {
-            PathBuf::from(&self.config.upload_dir).join(&file_id).to_string_lossy().to_string()
+            let upload_dir_canonical = PathBuf::from(&self.config.upload_dir).canonicalize()?;
+            let file_path = upload_dir_canonical.join(&file_id);
+
+            // SECURITY: Validate path doesn't escape upload directory
+            if !file_path.starts_with(&upload_dir_canonical) {
+                return Err(AppError::BadRequest("Invalid file path".to_string()));
+            }
+
+            file_path.to_string_lossy().to_string()
         };
 
         // Write encrypted blob to disk (for files only)
@@ -209,6 +217,14 @@ impl FileService {
 
         // Get next content order
         let order = self.db.get_next_content_order(post_id).await?;
+
+        // SECURITY: Limit number of appends to prevent memory exhaustion
+        if order >= MAX_POST_CONTENT_ENTRIES {
+            return Err(AppError::BadRequest(format!(
+                "Maximum post content limit reached ({} entries)",
+                MAX_POST_CONTENT_ENTRIES
+            )));
+        }
 
         // Add content
         self.db.add_post_content(post_id, &content_encrypted, order).await?;

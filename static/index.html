@@ -425,22 +425,21 @@
         <script type="importmap">
         {
             "imports": {
-                "@noble/hashes/sha3": "https://unpkg.com/@noble/hashes@1.3.3/esm/sha3.js",
-                "@noble/hashes/sha256": "https://unpkg.com/@noble/hashes@1.3.3/esm/sha256.js",
-                "@noble/hashes/utils": "https://unpkg.com/@noble/hashes@1.3.3/esm/utils.js",
-                "@noble/hashes/crypto": "https://unpkg.com/@noble/hashes@1.3.3/esm/crypto.js",
-                "@noble/hashes/_assert": "https://unpkg.com/@noble/hashes@1.3.3/esm/_assert.js"
+                "@noble/hashes/sha3": "/static/lib/@noble/hashes/sha3.js",
+                "@noble/hashes/sha256": "/static/lib/@noble/hashes/sha256.js",
+                "@noble/hashes/utils": "/static/lib/@noble/hashes/utils.js",
+                "@noble/hashes/crypto": "/static/lib/@noble/hashes/crypto.js",
+                "@noble/hashes/_assert": "/static/lib/@noble/hashes/_assert.js"
             }
         }
         </script>
 
-        <!-- Post-quantum crypto library (ML-KEM-1024) - pinned version 0.2.0 -->
-        <!-- SHA-256: CeJlciQZTjtmql3xOG0+mocmNKM2nuYlWd0jATqxaNc= -->
+        <!-- Post-quantum crypto library (ML-KEM-1024) - self-hosted for security -->
+        <!-- SECURITY: Self-hosted to eliminate CDN supply chain risk -->
         <script type="module">
-            // Import ML-KEM-1024 from noble-post-quantum using ESM build from unpkg
-            // Using unpkg to avoid CommonJS/ESM compatibility issues with jsDelivr
+            // Import ML-KEM-1024 from self-hosted noble-post-quantum
             // ML-KEM-1024 provides maximum security: ~256-bit classical, ~192-bit quantum
-            import { ml_kem1024 } from 'https://unpkg.com/@noble/post-quantum@0.2.0/esm/ml-kem.js';
+            import { ml_kem1024 } from '/static/lib/@noble/post-quantum/ml-kem.js';
 
             // Make available globally for non-module scripts
             window.noblePostQuantum = { ml_kem1024 };

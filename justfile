@@ -96,11 +96,11 @@ docker-build: sqlx-prepare
 docker-run:
     docker run -p 8080:8080 -v $(pwd)/uploads:/app/uploads dogbox:latest
 
-# Deploy to GCP Cloud Run
+# Deploy to GCP Cloud Run with Cloud Storage FUSE
 deploy PROJECT_ID REGION="us-central1": sqlx-prepare
     @echo "Building for GCP Cloud Run..."
     gcloud builds submit --tag gcr.io/{{PROJECT_ID}}/dogbox
-    @echo "Deploying to Cloud Run..."
+    @echo "Deploying to Cloud Run with Cloud Storage FUSE..."
     gcloud run deploy dogbox \
         --image gcr.io/{{PROJECT_ID}}/dogbox \
         --platform managed \
@@ -108,7 +108,10 @@ deploy PROJECT_ID REGION="us-central1": sqlx-prepare
         --allow-unauthenticated \
         --set-env-vars "DATABASE_URL=sqlite:/data/dogbox.db,UPLOAD_DIR=/data/uploads" \
         --memory 512Mi \
-        --max-instances 10
+        --max-instances 10 \
+        --execution-environment gen2 \
+        --add-volume name=data,type=cloud-storage,bucket={{PROJECT_ID}}-data \
+        --add-volume-mount volume=data,mount-path=/data
 
 # Setup GCP project
 setup-gcp PROJECT_ID:

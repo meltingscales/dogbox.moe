@@ -96,22 +96,22 @@ docker-build: sqlx-prepare
 docker-run:
     docker run -p 8080:8080 -v $(pwd)/uploads:/app/uploads dogbox:latest
 
-# Deploy to GCP Cloud Run with Cloud Storage FUSE
+# Deploy to GCP Cloud Run (ephemeral /tmp storage - data lost on restart!)
 deploy PROJECT_ID REGION="us-central1": sqlx-prepare
     @echo "Building for GCP Cloud Run..."
     gcloud builds submit --tag gcr.io/{{PROJECT_ID}}/dogbox
-    @echo "Deploying to Cloud Run with Cloud Storage FUSE..."
+    @echo "Deploying to Cloud Run with ephemeral storage..."
+    @echo "⚠️  WARNING: Using /tmp storage - all data will be lost on container restart!"
     gcloud run deploy dogbox \
         --image gcr.io/{{PROJECT_ID}}/dogbox \
         --platform managed \
         --region {{REGION}} \
         --allow-unauthenticated \
-        --set-env-vars "DATABASE_URL=sqlite:/data/dogbox.db,UPLOAD_DIR=/data/uploads" \
+        --set-env-vars "DATABASE_URL=sqlite:/tmp/dogbox.db,UPLOAD_DIR=/tmp/uploads,RUST_LOG=dogbox=info,ADMIN_MESSAGE=⚠️ DEMO MODE: All data is ephemeral and will be lost on restart!" \
         --memory 512Mi \
         --max-instances 10 \
         --execution-environment gen2 \
-        --add-volume name=data,type=cloud-storage,bucket={{PROJECT_ID}}-data \
-        --add-volume-mount volume=data,mount-path=/data
+        --timeout 300
 
 # Setup GCP project
 setup-gcp PROJECT_ID:

@@ -1,8 +1,8 @@
 # Multi-stage Dockerfile for dogbox.moe
 # Optimized for GCP Cloud Run deployment
 
-# Build stage
-FROM rust:1.90-slim as builder
+# Build stage - use bookworm to match runtime
+FROM rust:1.90-slim-bookworm as builder
 
 WORKDIR /build
 

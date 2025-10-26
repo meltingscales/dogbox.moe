@@ -95,7 +95,8 @@ vm-create PROJECT_ID ZONE="us-central1-a":
     @if gcloud compute instances describe dogbox --project={{PROJECT_ID}} --zone={{ZONE}} 2>/dev/null; then \
         echo "✓ VM 'dogbox' already exists"; \
     else \
-        echo "Creating VM 'dogbox'..."; \
+        STATIC_IP=$$(bash scripts/setup-static-ip.sh {{PROJECT_ID}} {{ZONE}} | tail -1); \
+        echo "Creating VM 'dogbox' with static IP $${STATIC_IP}..."; \
         gcloud compute instances create dogbox \
             --project={{PROJECT_ID}} \
             --zone={{ZONE}} \
@@ -104,8 +105,9 @@ vm-create PROJECT_ID ZONE="us-central1-a":
             --boot-disk-type=pd-standard \
             --image-family=debian-12 \
             --image-project=debian-cloud \
-            --tags=http-server,https-server; \
-        echo "✓ VM created"; \
+            --tags=http-server,https-server \
+            --address=$${STATIC_IP}; \
+        echo "✓ VM created with static IP $${STATIC_IP}"; \
     fi
     @echo "Configuring firewall rules..."
     @gcloud compute firewall-rules create allow-http \
@@ -118,6 +120,10 @@ vm-create PROJECT_ID ZONE="us-central1-a":
         --allow=tcp:443 \
         --target-tags=https-server \
         --description="Allow HTTPS traffic on port 443" 2>/dev/null || echo "✓ HTTPS firewall rule already exists"
+
+# Show the VM's static IP address and check DNS
+vm-ip PROJECT_ID ZONE="us-central1-a":
+    @bash scripts/check-dns.sh {{PROJECT_ID}} {{ZONE}}
 
 # Deploy to GCP VM
 deploy PROJECT_ID ZONE="us-central1-a": sqlx-prepare (vm-create PROJECT_ID ZONE)
@@ -229,3 +235,8 @@ install-deps:
     cargo install cargo-watch
     cargo install cargo-audit
     @echo "Development dependencies installed!"
+
+# Run upload/download integration test
+test-upload URL="http://localhost:8080":
+    @echo "Running upload/download integration test against {{URL}}..."
+    TEST_URL={{URL}} cargo run --bin upload_test --features reqwest

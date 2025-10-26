@@ -3,6 +3,7 @@ use crate::constants::{MAX_UPLOAD_SIZE, MAX_POST_CONTENT_ENTRIES};
 use crate::database::Database;
 use crate::error::{AppError, Result};
 use crate::models::{FileRecord, PostType, PostContentView, PostViewResponse};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use blake3;
 use chrono::{Duration, Utc};
 use std::path::PathBuf;
@@ -98,9 +99,19 @@ impl FileService {
         self.db.create_file(&file_record).await?;
 
         // For posts, store initial content if provided
+        // Base64 encode the encrypted binary data so it can be stored as text in the database
         if post_type == PostType::Post && !data.is_empty() {
-            let content_encrypted = String::from_utf8_lossy(&data).to_string();
-            self.db.add_post_content(&file_record.id, &content_encrypted, 0).await?;
+            let content_encrypted = BASE64.encode(&data);
+            // Default to markdown type for initial content
+            self.db.add_post_content(
+                &file_record.id,
+                &content_encrypted,
+                0,
+                "markdown",
+                file_record.mime_type.as_deref(),
+                file_record.file_extension.as_deref(),
+                Some(data.len() as i64),
+            ).await?;
         }
 
         tracing::info!(
@@ -122,6 +133,13 @@ impl FileService {
             .get_file(file_id)
             .await?
             .ok_or(AppError::NotFound)?;
+
+        // For posts, content is stored in database, not on disk
+        if file.get_post_type() == PostType::Post {
+            return Err(AppError::BadRequest(
+                "This is a post, not a file. Use /api/posts/{id} endpoint instead.".to_string()
+            ));
+        }
 
         let data = fs::read(&file.storage_path).await?;
 
@@ -182,10 +200,17 @@ impl FileService {
             let content_records = self.db.get_post_content(post_id).await?;
             content_records
                 .into_iter()
-                .map(|c| PostContentView {
-                    content_encrypted: c.content_encrypted,
-                    appended_at: c.appended_at,
-                    order: c.content_order,
+                .map(|c| {
+                    let content_type = c.get_content_type();
+                    PostContentView {
+                        content_encrypted: c.content_encrypted,
+                        appended_at: c.appended_at,
+                        order: c.content_order,
+                        content_type,
+                        mime_type: c.mime_type,
+                        file_extension: c.file_extension,
+                        file_size: c.file_size,
+                    }
                 })
                 .collect()
         } else {
@@ -209,6 +234,10 @@ impl FileService {
         post_id: &str,
         append_key: &str,
         content_encrypted: String,
+        content_type: Option<String>,
+        mime_type: Option<String>,
+        file_extension: Option<String>,
+        file_size: Option<i64>,
     ) -> Result<i64> {
         // Verify the post exists and append key is valid
         if !self.db.verify_append_key(post_id, append_key).await? {
@@ -226,10 +255,21 @@ impl FileService {
             )));
         }
 
-        // Add content
-        self.db.add_post_content(post_id, &content_encrypted, order).await?;
+        // Default to markdown if not specified
+        let content_type = content_type.unwrap_or_else(|| "markdown".to_string());
 
-        tracing::info!("Appended content to post {} (order: {})", post_id, order);
+        // Add content
+        self.db.add_post_content(
+            post_id,
+            &content_encrypted,
+            order,
+            &content_type,
+            mime_type.as_deref(),
+            file_extension.as_deref(),
+            file_size,
+        ).await?;
+
+        tracing::info!("Appended {} content to post {} (order: {})", content_type, post_id, order);
 
         Ok(order)
     }

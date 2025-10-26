@@ -321,9 +321,36 @@
                 <div class="upload-icon">📁</div>
                 <p><strong>Drop file here</strong> or click to browse</p>
                 <p style="color: #999; margin-top: 10px">
-                    Max 100MB • Accepts PNG, WebM (or converts other formats)
+                    Max 100MB • Accepts PNG, WebM, TXT, ZIP, TAR.GZ (or converts other formats)
                 </p>
                 <input type="file" id="fileInput" />
+            </div>
+
+            <!-- Markdown input for posts (hidden by default) -->
+            <div id="markdownInput" style="display: none; margin-top: 20px;">
+                <div style="background: white; border: 2px solid #667eea; border-radius: 12px; padding: 20px;">
+                    <div style="margin-bottom: 10px;">
+                        <strong>📝 Write Markdown (Optional)</strong>
+                        <p style="color: #666; font-size: 0.9em; margin: 5px 0 0 0;">
+                            You can include text with your post. Supports <a href="https://www.markdownguide.org/basic-syntax/" target="_blank" style="color: #667eea;">Markdown formatting</a>.
+                        </p>
+                    </div>
+                    <textarea
+                        id="markdownContent"
+                        placeholder="# My Post Title&#10;&#10;Write your content here using **Markdown** syntax...&#10;&#10;- Bullet points&#10;- **Bold** and *italic* text&#10;- Code blocks&#10;- And more!"
+                        style="width: 100%; min-height: 200px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 14px; resize: vertical;"
+                    ></textarea>
+                    <div style="color: #666; font-size: 0.85em; margin-top: 10px;">
+                        💡 Tip: You can upload a file AND add markdown, or just add markdown with no file.
+                    </div>
+                    <button
+                        id="submitMarkdownBtn"
+                        class="btn"
+                        style="margin-top: 15px; width: 100%;"
+                    >
+                        📝 Create Post with Markdown
+                    </button>
+                </div>
             </div>
 
             <div class="options-group">
@@ -586,6 +613,43 @@
                     console.log('[Main] File selected:', e.target.files[0].name);
                     uploadHandler.handleFile(e.target.files[0], callbacks);
                 }
+            });
+
+            // Show/hide markdown input based on post type
+            const postTypeSelect = document.getElementById("postType");
+            const markdownInputDiv = document.getElementById("markdownInput");
+            const markdownContentTextarea = document.getElementById("markdownContent");
+
+            postTypeSelect.addEventListener("change", () => {
+                if (postTypeSelect.value === "post") {
+                    markdownInputDiv.style.display = "block";
+                } else {
+                    markdownInputDiv.style.display = "none";
+                }
+            });
+
+            // Add markdown getter to callbacks
+            callbacks.getMarkdownContent = () => {
+                const value = markdownContentTextarea.value.trim();
+                console.log('[Main] getMarkdownContent:', value ? `${value.length} chars` : 'empty');
+                return value;
+            };
+
+            // Handle markdown-only post submission
+            const submitMarkdownBtn = document.getElementById("submitMarkdownBtn");
+            submitMarkdownBtn.addEventListener("click", async () => {
+                const markdownContent = markdownContentTextarea.value.trim();
+                if (!markdownContent) {
+                    alert('Please write some markdown content before creating a post.');
+                    return;
+                }
+
+                // Create a dummy file object with the markdown content
+                const markdownBlob = new Blob([markdownContent], { type: 'text/plain' });
+                const dummyFile = new File([markdownBlob], 'post.md', { type: 'text/plain' });
+
+                console.log('[Main] Submitting markdown-only post');
+                await uploadHandler.uploadFile(dummyFile, callbacks);
             });
 
             function copyLink() {

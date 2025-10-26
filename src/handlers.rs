@@ -337,7 +337,15 @@ pub async fn append_to_post(
     let db = Database::new(&config.database_url).await?;
     let service = FileService::new((*config).clone(), db);
 
-    let order = service.append_to_post(&id, &req.append_key, req.content).await?;
+    let order = service.append_to_post(
+        &id,
+        &req.append_key,
+        req.content,
+        req.content_type,
+        req.mime_type,
+        req.file_extension,
+        req.file_size,
+    ).await?;
 
     Ok(Json(AppendResponse {
         success: true,

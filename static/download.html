@@ -157,6 +157,130 @@
             color: #667eea;
             text-decoration: none;
         }
+
+        /* Markdown rendering styles */
+        .markdown-content {
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .markdown-content h1 {
+            font-size: 1.8em;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.3em;
+        }
+
+        .markdown-content h2 {
+            font-size: 1.5em;
+            margin-top: 0.8em;
+            margin-bottom: 0.4em;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.2em;
+        }
+
+        .markdown-content h3 {
+            font-size: 1.3em;
+            margin-top: 0.6em;
+            margin-bottom: 0.3em;
+        }
+
+        .markdown-content code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-size: 0.9em;
+        }
+
+        .markdown-content pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+            color: #333;
+        }
+
+        .markdown-content ul, .markdown-content ol {
+            margin-left: 20px;
+            margin-bottom: 1em;
+        }
+
+        .markdown-content li {
+            margin-bottom: 0.5em;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 1em;
+            margin-left: 0;
+            color: #666;
+            font-style: italic;
+        }
+
+        .markdown-content a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+
+        .markdown-content img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 1em 0;
+        }
+
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        .markdown-content th, .markdown-content td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .markdown-content th {
+            background: #f4f4f4;
+            font-weight: bold;
+        }
+
+        .file-attachment {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .file-attachment-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .file-attachment-info {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .file-attachment-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
@@ -219,6 +343,9 @@
 
     <script src="/static/js/config.js"></script>
 
+    <!-- Markdown rendering library -->
+    <script src="/static/lib/marked.min.js"></script>
+
     <!-- Import map for noble-post-quantum dependencies -->
     <script type="importmap">
     {
@@ -279,6 +406,194 @@
         let mimeType = null;
         let decryptedBlob = null;
 
+        // Handle post viewing (markdown + file attachments)
+        async function handlePostView(postData) {
+            try {
+                status.classList.remove('loading');
+                status.classList.add('ready');
+                statusText.textContent = `✅ Post loaded (${postData.content.length} entries)`;
+
+                // Hide file-specific UI
+                fileInfo.style.display = 'none';
+                downloadBtn.style.display = 'none';
+                playBtn.style.display = 'none';
+
+                // Create post display area
+                const postDisplay = document.createElement('div');
+                postDisplay.style.cssText = 'background: #f8f9fa; border-radius: 12px; padding: 20px; margin: 20px 0;';
+
+                for (const entry of postData.content) {
+                    try {
+                        // Decrypt each content entry
+                        const encryptedBase64 = entry.content_encrypted;
+                        const encryptedBytes = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+                        const decryptedData = await dogboxCrypto.decryptFile(encryptedBytes.buffer, decryptionKey);
+
+                        // Create entry display
+                        const entryDiv = document.createElement('div');
+                        entryDiv.style.cssText = 'background: white; border-radius: 8px; padding: 15px; margin: 10px 0; border-left: 4px solid #667eea;';
+
+                        // Timestamp header
+                        const timestamp = document.createElement('div');
+                        timestamp.style.cssText = 'color: #666; font-size: 0.85em; margin-bottom: 10px;';
+
+                        if (entry.content_type === 'file') {
+                            // File attachment
+                            const fileSize = entry.file_size ? (entry.file_size / 1024).toFixed(1) + ' KB' : 'Unknown size';
+                            const fileExt = entry.file_extension || '';
+                            timestamp.innerHTML = `📅 ${new Date(entry.appended_at).toLocaleString()} • 📎 File Attachment (${fileSize})`;
+                            entryDiv.appendChild(timestamp);
+
+                            // Create file attachment UI
+                            const fileAttachment = document.createElement('div');
+                            fileAttachment.className = 'file-attachment';
+
+                            const icon = document.createElement('div');
+                            icon.className = 'file-attachment-icon';
+                            icon.textContent = getFileIcon(entry.mime_type);
+
+                            const info = document.createElement('div');
+                            info.className = 'file-attachment-info';
+                            info.textContent = `${entry.mime_type || 'application/octet-stream'} ${fileExt}`;
+
+                            const buttons = document.createElement('div');
+                            buttons.className = 'file-attachment-buttons';
+
+                            // Download button
+                            const downloadBtn = document.createElement('button');
+                            downloadBtn.className = 'btn';
+                            downloadBtn.textContent = '🔓 Decrypt and Download';
+                            downloadBtn.onclick = async () => {
+                                try {
+                                    downloadBtn.disabled = true;
+                                    downloadBtn.textContent = '⏳ Decrypting...';
+
+                                    const filename = 'dogbox_file' + (fileExt || '');
+                                    const blob = new Blob([decryptedData], { type: entry.mime_type || 'application/octet-stream' });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = filename;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+
+                                    downloadBtn.textContent = '✅ Downloaded!';
+                                    setTimeout(() => {
+                                        downloadBtn.disabled = false;
+                                        downloadBtn.textContent = '🔓 Decrypt and Download';
+                                    }, 2000);
+                                } catch (err) {
+                                    alert('Download failed: ' + err.message);
+                                    downloadBtn.disabled = false;
+                                    downloadBtn.textContent = '🔓 Decrypt and Download';
+                                }
+                            };
+                            buttons.appendChild(downloadBtn);
+
+                            // Play button for media
+                            if (entry.mime_type && isPlayableMedia(entry.mime_type)) {
+                                const playBtn = document.createElement('button');
+                                playBtn.className = 'btn';
+                                playBtn.textContent = '▶️ Play in Browser';
+                                playBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                                playBtn.onclick = async () => {
+                                    try {
+                                        playBtn.disabled = true;
+                                        const blob = new Blob([decryptedData], { type: entry.mime_type });
+                                        const blobUrl = URL.createObjectURL(blob);
+
+                                        // Create media player
+                                        const playerDiv = document.createElement('div');
+                                        playerDiv.style.cssText = 'margin-top: 15px; text-align: center;';
+
+                                        if (entry.mime_type.startsWith('image/')) {
+                                            const img = document.createElement('img');
+                                            img.src = blobUrl;
+                                            img.style.cssText = 'max-width: 100%; border-radius: 8px;';
+                                            playerDiv.appendChild(img);
+                                        } else if (entry.mime_type.startsWith('video/')) {
+                                            const video = document.createElement('video');
+                                            video.src = blobUrl;
+                                            video.controls = true;
+                                            video.style.cssText = 'max-width: 100%; border-radius: 8px;';
+                                            playerDiv.appendChild(video);
+                                        } else if (entry.mime_type.startsWith('audio/')) {
+                                            const audio = document.createElement('audio');
+                                            audio.src = blobUrl;
+                                            audio.controls = true;
+                                            audio.style.cssText = 'width: 100%;';
+                                            playerDiv.appendChild(audio);
+                                        }
+
+                                        fileAttachment.appendChild(playerDiv);
+                                        playBtn.disabled = true;
+                                        playBtn.textContent = '✅ Playing';
+                                    } catch (err) {
+                                        alert('Playback failed: ' + err.message);
+                                        playBtn.disabled = false;
+                                    }
+                                };
+                                buttons.appendChild(playBtn);
+                            }
+
+                            fileAttachment.appendChild(icon);
+                            fileAttachment.appendChild(info);
+                            fileAttachment.appendChild(buttons);
+                            entryDiv.appendChild(fileAttachment);
+                        } else {
+                            // Markdown content
+                            timestamp.innerHTML = `📅 ${new Date(entry.appended_at).toLocaleString()} • 📝 Markdown`;
+                            entryDiv.appendChild(timestamp);
+
+                            const decryptedText = new TextDecoder().decode(decryptedData);
+                            const content = document.createElement('div');
+                            content.className = 'markdown-content';
+                            content.innerHTML = marked.parse(decryptedText);
+                            entryDiv.appendChild(content);
+                        }
+
+                        postDisplay.appendChild(entryDiv);
+                    } catch (err) {
+                        console.error('Failed to decrypt entry:', err);
+                        const errorDiv = document.createElement('div');
+                        errorDiv.style.cssText = 'background: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; padding: 15px; margin: 10px 0;';
+                        errorDiv.textContent = '❌ Failed to decrypt this entry';
+                        postDisplay.appendChild(errorDiv);
+                    }
+                }
+
+                // Add info footer
+                const infoFooter = document.createElement('div');
+                infoFooter.style.cssText = 'margin-top: 20px; padding-top: 15px; border-top: 2px solid #e5e7eb; color: #666; font-size: 0.9em;';
+                infoFooter.innerHTML = `
+                    <strong>Post Info:</strong><br/>
+                    📊 Views: ${postData.view_count}<br/>
+                    📅 Created: ${new Date(postData.uploaded_at).toLocaleString()}<br/>
+                    ${postData.is_permanent ? '♾️ Permanent (never expires)' : `⏱️ Expires: ${new Date(postData.expires_at).toLocaleString()}`}
+                `;
+                postDisplay.appendChild(infoFooter);
+
+                // Insert after status message
+                status.parentNode.insertBefore(postDisplay, status.nextSibling);
+            } catch (error) {
+                throw new Error('Failed to display post: ' + error.message);
+            }
+        }
+
+        // Helper function to get file icon based on MIME type
+        function getFileIcon(mimeType) {
+            if (!mimeType) return '📄';
+            if (mimeType.startsWith('image/')) return '🖼️';
+            if (mimeType.startsWith('video/')) return '🎥';
+            if (mimeType.startsWith('audio/')) return '🎵';
+            if (mimeType.includes('pdf')) return '📕';
+            if (mimeType.includes('zip') || mimeType.includes('tar') || mimeType.includes('gzip')) return '📦';
+            if (mimeType.includes('text')) return '📝';
+            return '📄';
+        }
+
         async function init() {
             try {
                 // Extract file ID and key from URL
@@ -293,8 +608,24 @@
                 // Import key
                 decryptionKey = await dogboxCrypto.importKey(keyBase64);
 
-                // Download encrypted file
-                const response = await fetch(`/api/files/${fileId}`);
+                // Try downloading as a file first
+                let response = await fetch(`/api/files/${fileId}`);
+
+                // If we get a 400, it might be a post
+                if (response.status === 400) {
+                    const errorText = await response.text();
+                    if (errorText.includes('post')) {
+                        // This is a post, fetch from posts endpoint
+                        response = await fetch(`/api/posts/${fileId}`);
+                        if (!response.ok) {
+                            throw new Error('Failed to load post');
+                        }
+                        const postData = await response.json();
+                        await handlePostView(postData);
+                        return;
+                    }
+                }
+
                 if (!response.ok) {
                     if (response.status === 404) {
                         throw new Error('File not found or expired');
@@ -344,6 +675,9 @@
                 'application/pdf': '.pdf',
                 'text/plain': '.txt',
                 'application/zip': '.zip',
+                'application/gzip': '.tar.gz',
+                'application/x-gzip': '.tar.gz',
+                'application/x-tar': '.tar',
             };
 
             return mimeToExt[mimeType] || '';

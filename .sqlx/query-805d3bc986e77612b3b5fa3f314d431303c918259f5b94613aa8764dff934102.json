@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id as \"id!\", file_id, content_encrypted,\n                   content_order as \"content_order!\",\n                   appended_at as \"appended_at: DateTime<Utc>\",\n                   content_type, mime_type, file_extension,\n                   file_size as \"file_size?\"\n            FROM posts_content\n            WHERE file_id = ?\n            ORDER BY content_order ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "file_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "content_encrypted",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "content_order!",
+        "ordinal": 3,
+        "type_info": "Int64"
+      },
+      {
+        "name": "appended_at: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "content_type",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "mime_type",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_extension",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_size?",
+        "ordinal": 8,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "805d3bc986e77612b3b5fa3f314d431303c918259f5b94613aa8764dff934102"
+}

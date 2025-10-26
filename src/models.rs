@@ -38,6 +38,41 @@ impl std::str::FromStr for PostType {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum PostContentType {
+    #[serde(rename = "markdown")]
+    Markdown,  // Text/markdown content
+    #[serde(rename = "file")]
+    File,      // Encrypted file attachment
+}
+
+impl Default for PostContentType {
+    fn default() -> Self {
+        PostContentType::Markdown
+    }
+}
+
+impl std::fmt::Display for PostContentType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PostContentType::Markdown => write!(f, "markdown"),
+            PostContentType::File => write!(f, "file"),
+        }
+    }
+}
+
+impl std::str::FromStr for PostContentType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "markdown" => Ok(PostContentType::Markdown),
+            "file" => Ok(PostContentType::File),
+            _ => Err(format!("Invalid post content type: {}", s)),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct FileRecord {
     pub id: String,
@@ -131,6 +166,16 @@ pub struct PostContent {
     pub content_encrypted: String,
     pub content_order: i64,
     pub appended_at: DateTime<Utc>,
+    pub content_type: String,  // 'markdown' or 'file'
+    pub mime_type: Option<String>,
+    pub file_extension: Option<String>,
+    pub file_size: Option<i64>,
+}
+
+impl PostContent {
+    pub fn get_content_type(&self) -> PostContentType {
+        self.content_type.parse().unwrap_or_default()
+    }
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -138,8 +183,21 @@ pub struct AppendRequest {
     /// Key that allows appending to this post
     pub append_key: String,
 
-    /// Encrypted markdown content to append
+    /// Encrypted content to append (base64 encoded)
     pub content: String,
+
+    /// Type of content: 'markdown' or 'file'
+    #[serde(default)]
+    pub content_type: Option<String>,
+
+    /// MIME type (required for file content)
+    pub mime_type: Option<String>,
+
+    /// File extension (optional for file content)
+    pub file_extension: Option<String>,
+
+    /// File size in bytes (optional for file content)
+    pub file_size: Option<i64>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -166,6 +224,10 @@ pub struct PostContentView {
     pub content_encrypted: String,
     pub appended_at: DateTime<Utc>,
     pub order: i64,
+    pub content_type: PostContentType,
+    pub mime_type: Option<String>,
+    pub file_extension: Option<String>,
+    pub file_size: Option<i64>,
 }
 
 impl FileRecord {

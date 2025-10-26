@@ -24,7 +24,7 @@ class UploadHandler {
     }
 
     /**
-     * Check if file format is allowed (PNG, WebM, TXT, ZIP)
+     * Check if file format is allowed (PNG, WebM, TXT, ZIP, TAR.GZ)
      * MP3 files need conversion to WebM to strip ID3 metadata
      */
     isAllowedFormat(file) {
@@ -33,7 +33,10 @@ class UploadHandler {
                        file.type === 'audio/webm' ||
                        file.type === 'text/plain' ||
                        file.type === 'application/zip' ||
-                       file.type === 'application/x-zip-compressed';
+                       file.type === 'application/x-zip-compressed' ||
+                       file.type === 'application/gzip' ||
+                       file.type === 'application/x-gzip' ||
+                       file.type === 'application/x-tar';
         console.log('[Upload] isAllowedFormat:', file.type, '→', allowed);
         return allowed;
     }
@@ -48,7 +51,7 @@ class UploadHandler {
         const isAllowed = this.isAllowedFormat(file);
 
         if (!isAllowed && !needsConversion) {
-            const msg = 'Unsupported file type. Please upload PNG, WebM, TXT, or ZIP files, or a file that can be converted (JPEG, MP3, MP4, etc.)';
+            const msg = 'Unsupported file type. Please upload PNG, WebM, TXT, ZIP, or TAR.GZ files, or a file that can be converted (JPEG, MP3, MP4, etc.)';
             console.error('[Upload] File rejected:', msg);
             alert(msg);
             return;
@@ -158,37 +161,50 @@ class UploadHandler {
             const keyBase64 = await this.crypto.exportKey(key);
             console.log('[Upload] Key exported to base64, length:', keyBase64.length);
 
-            callbacks.updateProgress(60, 'Encrypting file...');
-
-            // Encrypt file
-            console.log('[Upload] Encrypting file...');
-            const encryptedData = await this.crypto.encryptFile(file, key);
-            console.log('[Upload] File encrypted, size:', encryptedData.byteLength);
-
-            callbacks.updateProgress(75, 'Uploading encrypted data...');
-
             // Get upload options
             const postType = callbacks.getPostType();
             const isPermanent = callbacks.getIsPermanent();
             const expiryHours = callbacks.getExpiryHours();
+            const markdownContent = callbacks.getMarkdownContent ? callbacks.getMarkdownContent() : '';
 
-            // Extract file extension from original filename
-            const fileExtension = file.name.includes('.')
-                ? '.' + file.name.split('.').pop()
-                : '';
+            console.log('[Upload] Upload options:', { postType, isPermanent, expiryHours, hasMarkdown: !!markdownContent });
 
-            console.log('[Upload] Upload options:', { postType, isPermanent, expiryHours, fileExtension, mimeType: file.type });
+            callbacks.updateProgress(60, 'Encrypting content...');
+
+            // For posts, prioritize markdown content; if no markdown, use file
+            let encryptedData;
+            let mimeType;
+            let fileExtension = '';
+
+            if (postType === 'post' && markdownContent) {
+                // Encrypt markdown content
+                console.log('[Upload] Encrypting markdown content:', markdownContent.length, 'chars');
+                const markdownBlob = new Blob([markdownContent], { type: 'text/plain' });
+                encryptedData = await this.crypto.encryptFile(markdownBlob, key);
+                mimeType = 'text/plain';
+                fileExtension = '.md';
+                console.log('[Upload] Markdown encrypted, size:', encryptedData.byteLength);
+            } else {
+                // Encrypt file
+                console.log('[Upload] Encrypting file...');
+                encryptedData = await this.crypto.encryptFile(file, key);
+                mimeType = file.type || "application/octet-stream";
+                fileExtension = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
+                console.log('[Upload] File encrypted, size:', encryptedData.byteLength);
+            }
+
+            callbacks.updateProgress(75, 'Uploading encrypted data...');
 
             // Upload to server
             const formData = new FormData();
             formData.append("file", new Blob([encryptedData]), "encrypted.bin");
-            formData.append("mime_type", file.type || "application/octet-stream");
+            formData.append("mime_type", mimeType);
             formData.append("post_type", postType);
             formData.append("is_permanent", isPermanent.toString());
             if (!isPermanent) {
                 formData.append("expiry_hours", expiryHours);
             }
-            // Preserve original file extension
+            // Preserve file extension
             if (fileExtension) {
                 formData.append("file_extension", fileExtension);
             }

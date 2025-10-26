@@ -178,15 +178,31 @@ impl Database {
     }
 
     // Post-specific methods
-    pub async fn add_post_content(&self, file_id: &str, content_encrypted: &str, order: i64) -> Result<()> {
+    pub async fn add_post_content(
+        &self,
+        file_id: &str,
+        content_encrypted: &str,
+        order: i64,
+        content_type: &str,
+        mime_type: Option<&str>,
+        file_extension: Option<&str>,
+        file_size: Option<i64>,
+    ) -> Result<()> {
         sqlx::query!(
             r#"
-            INSERT INTO posts_content (file_id, content_encrypted, content_order)
-            VALUES (?, ?, ?)
+            INSERT INTO posts_content (
+                file_id, content_encrypted, content_order, content_type,
+                mime_type, file_extension, file_size
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             "#,
             file_id,
             content_encrypted,
-            order
+            order,
+            content_type,
+            mime_type,
+            file_extension,
+            file_size
         )
         .execute(&self.pool)
         .await?;
@@ -200,7 +216,9 @@ impl Database {
             r#"
             SELECT id as "id!", file_id, content_encrypted,
                    content_order as "content_order!",
-                   appended_at as "appended_at: DateTime<Utc>"
+                   appended_at as "appended_at: DateTime<Utc>",
+                   content_type, mime_type, file_extension,
+                   file_size as "file_size?"
             FROM posts_content
             WHERE file_id = ?
             ORDER BY content_order ASC

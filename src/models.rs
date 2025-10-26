@@ -109,8 +109,8 @@ pub struct UploadResponse {
     /// When the file will be automatically deleted (null if permanent)
     pub expires_at: Option<DateTime<Utc>>,
 
-    /// Direct download URL (append #key in client)
-    #[schema(example = "https://dogbox.moe/api/files/550e8400-e29b-41d4-a716-446655440000")]
+    /// Direct view URL (append #key in client)
+    #[schema(example = "https://dogbox.moe/f/550e8400-e29b-41d4-a716-446655440000")]
     pub url: String,
 
     /// Post type

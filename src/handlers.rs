@@ -194,12 +194,18 @@ pub async fn upload(
         .store_file(data, filename_encrypted, mime_type, expiry_hours, final_post_type, final_is_permanent, file_extension)
         .await?;
 
+    let post_type = file.get_post_type();
+    let url = match post_type {
+        PostType::Post => format!("/p/{}", file.id),
+        PostType::File => format!("/f/{}", file.id),
+    };
+
     Ok(Json(UploadResponse {
         file_id: file.id.clone(),
         deletion_token: file.deletion_token.clone(),
         expires_at: if file.is_permanent { None } else { Some(file.expires_at) },
-        url: format!("/api/files/{}", file.id),
-        post_type: file.get_post_type(),
+        url,
+        post_type,
         post_append_key: file.post_append_key.clone(),
         is_permanent: file.is_permanent,
     }))

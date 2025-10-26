@@ -245,8 +245,9 @@ class UploadHandler {
 
             callbacks.updateProgress(100, 'Complete!');
 
-            // Construct URL with key in fragment
-            const url = `${window.location.origin}/f/${data.file_id}#${keyBase64}`;
+            // Construct URL with key in fragment - use correct path based on type
+            const pathPrefix = data.post_type === 'post' ? '/p/' : '/f/';
+            const url = `${window.location.origin}${pathPrefix}${data.file_id}#${keyBase64}`;
             console.log('[Upload] Share URL created, length:', url.length);
 
             // Store append key if this is a post

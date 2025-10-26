@@ -21,6 +21,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     test_post_creation(&base_url).await?;
     test_post_append(&base_url).await?;
     test_post_markdown(&base_url).await?;
+    test_post_file_append(&base_url).await?;
 
     println!("\n{}", "=".repeat(80));
     println!("✅ All tests passed successfully!");
@@ -259,7 +260,8 @@ async fn test_post_append(base_url: &str) -> Result<(), Box<dyn Error>> {
         let content_base64 = BASE64.encode(content.as_bytes());
         let append_request = json!({
             "append_key": post_append_key,
-            "content": content_base64
+            "content": content_base64,
+            "content_type": "markdown"
         });
 
         let append_response = client
@@ -443,7 +445,8 @@ This is an appended entry with more **markdown**:
     let append_markdown_base64 = BASE64.encode(append_markdown.as_bytes());
     let append_request = json!({
         "append_key": post_append_key,
-        "content": append_markdown_base64
+        "content": append_markdown_base64,
+        "content_type": "markdown"
     });
 
     let append_response = client
@@ -487,6 +490,144 @@ This is an appended entry with more **markdown**:
         .await?;
 
     println!("  ✅ Markdown post deleted");
+
+    Ok(())
+}
+
+/// Test appending file attachments to posts
+async fn test_post_file_append(base_url: &str) -> Result<(), Box<dyn Error>> {
+    println!("\n📎 TEST: Post File Appending");
+    println!("{}", "-".repeat(80));
+
+    // Create initial post with markdown
+    let initial_markdown = "# My Post\n\nThis post will have file attachments appended.";
+    let form = multipart::Form::new()
+        .part("file", multipart::Part::bytes(initial_markdown.as_bytes().to_vec())
+            .file_name("encrypted.bin")
+            .mime_str("application/octet-stream")?)
+        .text("mime_type", "text/plain")
+        .text("post_type", "post")
+        .text("is_permanent", "false")
+        .text("expiry_hours", "24");
+
+    let client = reqwest::Client::new();
+    let upload_response = client
+        .post(format!("{}/api/upload", base_url))
+        .multipart(form)
+        .send()
+        .await?;
+
+    if !upload_response.status().is_success() {
+        let error_text = upload_response.text().await?;
+        return Err(format!("❌ Post creation failed: {}", error_text).into());
+    }
+
+    let upload_data: serde_json::Value = upload_response.json().await?;
+    let post_id = upload_data["file_id"].as_str()
+        .ok_or("Missing file_id")?;
+    let post_append_key = upload_data["post_append_key"].as_str()
+        .ok_or("Missing post_append_key")?;
+
+    println!("  ✅ Initial post created: {}", post_id);
+
+    // Append a "file" (simulated with test data)
+    let file_content = b"This is a test file attachment!";
+    let file_content_base64 = BASE64.encode(file_content);
+
+    let append_file_request = json!({
+        "append_key": post_append_key,
+        "content": file_content_base64,
+        "content_type": "file",
+        "mime_type": "text/plain",
+        "file_extension": ".txt",
+        "file_size": file_content.len()
+    });
+
+    let append_response = client
+        .post(format!("{}/api/posts/{}/append", base_url, post_id))
+        .json(&append_file_request)
+        .send()
+        .await?;
+
+    if !append_response.status().is_success() {
+        let error_text = append_response.text().await?;
+        return Err(format!("❌ File append failed: {}", error_text).into());
+    }
+
+    println!("  ✅ File attachment appended");
+
+    // Append another markdown entry
+    let more_markdown = "## Update\n\nAdded a file above!";
+    let markdown_base64 = BASE64.encode(more_markdown.as_bytes());
+
+    let append_markdown_request = json!({
+        "append_key": post_append_key,
+        "content": markdown_base64,
+        "content_type": "markdown"
+    });
+
+    let append_markdown_response = client
+        .post(format!("{}/api/posts/{}/append", base_url, post_id))
+        .json(&append_markdown_request)
+        .send()
+        .await?;
+
+    if !append_markdown_response.status().is_success() {
+        let error_text = append_markdown_response.text().await?;
+        return Err(format!("❌ Markdown append after file failed: {}", error_text).into());
+    }
+
+    println!("  ✅ Markdown appended after file");
+
+    // Verify all entries are present with correct types
+    let view_response = client
+        .get(format!("{}/api/posts/{}", base_url, post_id))
+        .send()
+        .await?;
+
+    if !view_response.status().is_success() {
+        return Err(format!("❌ Failed to view post: {}", view_response.status()).into());
+    }
+
+    let post_data: serde_json::Value = view_response.json().await?;
+    let content_entries = post_data["content"].as_array()
+        .ok_or("Missing content array")?;
+
+    if content_entries.len() != 3 {
+        return Err(format!("❌ Expected 3 entries, got {}", content_entries.len()).into());
+    }
+
+    // Verify content types
+    let entry0_type = content_entries[0]["content_type"].as_str().unwrap_or("");
+    let entry1_type = content_entries[1]["content_type"].as_str().unwrap_or("");
+    let entry2_type = content_entries[2]["content_type"].as_str().unwrap_or("");
+
+    if entry0_type == "markdown" && entry1_type == "file" && entry2_type == "markdown" {
+        println!("  ✅ Content types correct: markdown, file, markdown");
+    } else {
+        return Err(format!("❌ Content types incorrect: {}, {}, {}", entry0_type, entry1_type, entry2_type).into());
+    }
+
+    // Verify file metadata
+    let file_entry = &content_entries[1];
+    if file_entry["mime_type"].as_str() == Some("text/plain") &&
+       file_entry["file_extension"].as_str() == Some(".txt") &&
+       file_entry["file_size"].as_i64() == Some(file_content.len() as i64) {
+        println!("  ✅ File metadata preserved correctly");
+    } else {
+        return Err("❌ File metadata not preserved correctly".into());
+    }
+
+    // Cleanup
+    let deletion_token = upload_data["deletion_token"].as_str()
+        .ok_or("Missing deletion_token")?;
+
+    client
+        .delete(format!("{}/api/files/{}?token={}", base_url, post_id, deletion_token))
+        .send()
+        .await?;
+
+    println!("  ✅ Post with file attachments deleted");
 
     Ok(())
 }

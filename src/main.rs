@@ -128,6 +128,7 @@ async fn main() -> anyhow::Result<()> {
         // Frontend routes
         .route("/", get(serve_index))
         .route("/f/:id", get(serve_download))
+        .route("/p/:id", get(serve_download))
         .route("/faq", get(serve_faq))
         .route("/post-types", get(serve_post_types))
         .route("/prohibited-uploads", get(serve_prohibited_uploads))

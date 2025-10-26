@@ -330,9 +330,9 @@
             <div id="markdownInput" style="display: none; margin-top: 20px;">
                 <div style="background: white; border: 2px solid #667eea; border-radius: 12px; padding: 20px;">
                     <div style="margin-bottom: 10px;">
-                        <strong>📝 Write Markdown (Optional)</strong>
+                        <strong>📝 Write Markdown Content</strong>
                         <p style="color: #666; font-size: 0.9em; margin: 5px 0 0 0;">
-                            You can include text with your post. Supports <a href="https://www.markdownguide.org/basic-syntax/" target="_blank" style="color: #667eea;">Markdown formatting</a>.
+                            Create an appendable post with <a href="https://www.markdownguide.org/basic-syntax/" target="_blank" style="color: #667eea;">Markdown formatting</a>. You'll receive an append key to add more content later.
                         </p>
                     </div>
                     <textarea
@@ -341,14 +341,14 @@
                         style="width: 100%; min-height: 200px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 14px; resize: vertical;"
                     ></textarea>
                     <div style="color: #666; font-size: 0.85em; margin-top: 10px;">
-                        💡 Tip: You can upload a file AND add markdown, or just add markdown with no file.
+                        💡 Tip: After creating your post, you can append both markdown and file attachments using the append key.
                     </div>
                     <button
                         id="submitMarkdownBtn"
                         class="btn"
                         style="margin-top: 15px; width: 100%;"
                     >
-                        📝 Create Post with Markdown
+                        📝 Create Post
                     </button>
                 </div>
             </div>
@@ -357,11 +357,11 @@
                 <div class="option-row">
                     <label for="postType">Upload Type:</label>
                     <select id="postType">
-                        <option value="file">File (Classic) - One-time upload</option>
-                        <option value="post">Post (Appendable) - Can add content later</option>
+                        <option value="file">File (Classic) - One-time file upload</option>
+                        <option value="post">Post (Appendable) - Markdown content only</option>
                     </select>
                     <div class="help-text">
-                        Files are for binary uploads. Posts are for text/markdown that can be appended to.
+                        Files: Upload any file type (converted if needed). Posts: Write markdown that you can append to later.
                         <a href="/post-types">Learn more</a>
                     </div>
                 </div>
@@ -615,16 +615,27 @@
                 }
             });
 
-            // Show/hide markdown input based on post type
+            // Show/hide markdown input and upload area based on post type
             const postTypeSelect = document.getElementById("postType");
             const markdownInputDiv = document.getElementById("markdownInput");
             const markdownContentTextarea = document.getElementById("markdownContent");
 
             postTypeSelect.addEventListener("change", () => {
                 if (postTypeSelect.value === "post") {
+                    // Show markdown input, hide file upload area
                     markdownInputDiv.style.display = "block";
+                    uploadArea.style.display = "none";
+                    converterNotice.style.display = "none";
+
+                    // Clear any pending file since posts don't use file upload
+                    uploadHandler.pendingFile = null;
+                    const fileInput = document.getElementById("fileInput");
+                    if (fileInput) fileInput.value = '';
                 } else {
+                    // Show file upload area, hide markdown input
                     markdownInputDiv.style.display = "none";
+                    uploadArea.style.display = "block";
+                    // Note: converterNotice visibility is managed by upload handler
                 }
             });
 

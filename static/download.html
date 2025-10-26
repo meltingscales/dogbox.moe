@@ -281,6 +281,94 @@
             justify-content: center;
             flex-wrap: wrap;
         }
+
+        .append-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .append-section.show {
+            display: block;
+        }
+
+        .append-key-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .append-key-input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .append-mode-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .append-mode-tab {
+            flex: 1;
+            padding: 12px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .append-mode-tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .append-content {
+            display: none;
+        }
+
+        .append-content.show {
+            display: block;
+        }
+
+        .append-textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1em;
+            resize: vertical;
+        }
+
+        .file-drop-zone {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-drop-zone:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .file-drop-zone.dragover {
+            border-color: #667eea;
+            background: #e0e7ff;
+        }
     </style>
 </head>
 <body>
@@ -333,6 +421,57 @@
             The server never has access to the decryption key or the original file content.
         </div>
 
+        <!-- Append content section (only shown for posts) -->
+        <div class="append-section" id="appendSection">
+            <h2 style="margin-bottom: 15px;">✏️ Append Content to Post</h2>
+
+            <input type="text"
+                   class="append-key-input"
+                   id="appendKeyInput"
+                   placeholder="Enter DOGBOX_KEY_APPEND_... to add content"
+                   autocomplete="off">
+
+            <div class="append-mode-tabs">
+                <div class="append-mode-tab active" data-mode="markdown">
+                    📝 Markdown
+                </div>
+                <div class="append-mode-tab" data-mode="file">
+                    📎 File Attachment
+                </div>
+            </div>
+
+            <!-- Markdown input -->
+            <div class="append-content show" id="markdownAppend">
+                <textarea class="append-textarea"
+                          id="markdownTextarea"
+                          placeholder="Write your markdown content here..."></textarea>
+            </div>
+
+            <!-- File input -->
+            <div class="append-content" id="fileAppend">
+                <div class="file-drop-zone" id="fileDropZone">
+                    <div style="font-size: 3em; margin-bottom: 10px;">📁</div>
+                    <div style="font-size: 1.1em; margin-bottom: 10px;">
+                        <strong>Drop file here or click to select</strong>
+                    </div>
+                    <div style="color: #666; font-size: 0.9em;">
+                        Any file type supported
+                    </div>
+                    <input type="file" id="fileInput" style="display: none;">
+                </div>
+                <div id="selectedFileInfo" style="display: none; margin-top: 15px; padding: 15px; background: white; border-radius: 8px;">
+                    <strong>Selected file:</strong>
+                    <div id="selectedFileName" style="margin-top: 5px;"></div>
+                </div>
+            </div>
+
+            <button class="btn" id="appendBtn" style="margin-top: 15px;">
+                ➕ Append to Post
+            </button>
+
+            <div id="appendStatus" style="display: none; margin-top: 15px; padding: 15px; border-radius: 8px;"></div>
+        </div>
+
         <footer>
             <p>
                 <a href="/">Upload a file</a> •
@@ -342,6 +481,7 @@
     </div>
 
     <script src="/static/js/config.js"></script>
+    <script src="/static/js/media-utils.js"></script>
 
     <!-- Markdown rendering library -->
     <script src="/static/lib/marked.min.js"></script>
@@ -387,7 +527,6 @@
             document.getElementById('page-sitename').textContent = DogboxConfig.siteName;
         }
 
-        const dogboxCrypto = new DogboxCrypto();
         const status = document.getElementById('status');
         const statusText = document.getElementById('statusText');
         const fileInfo = document.getElementById('fileInfo');
@@ -405,6 +544,17 @@
         let decryptionKey = null;
         let mimeType = null;
         let decryptedBlob = null;
+        let dogboxCrypto = null;
+
+        // Initialize crypto when ready
+        async function initCrypto() {
+            if (!window.noblePostQuantumReady) {
+                await new Promise(resolve => {
+                    window.addEventListener('noblePostQuantumReady', resolve, { once: true });
+                });
+            }
+            dogboxCrypto = new DogboxCrypto();
+        }
 
         // Handle post viewing (markdown + file attachments)
         async function handlePostView(postData) {
@@ -450,7 +600,7 @@
 
                             const icon = document.createElement('div');
                             icon.className = 'file-attachment-icon';
-                            icon.textContent = getFileIcon(entry.mime_type);
+                            icon.textContent = MediaUtils.getFileIcon(entry.mime_type);
 
                             const info = document.createElement('div');
                             info.className = 'file-attachment-info';
@@ -493,7 +643,7 @@
                             buttons.appendChild(downloadBtn);
 
                             // Play button for media
-                            if (entry.mime_type && isPlayableMedia(entry.mime_type)) {
+                            if (entry.mime_type && MediaUtils.isPlayableMedia(entry.mime_type)) {
                                 const playBtn = document.createElement('button');
                                 playBtn.className = 'btn';
                                 playBtn.textContent = '▶️ Play in Browser';
@@ -577,28 +727,21 @@
 
                 // Insert after status message
                 status.parentNode.insertBefore(postDisplay, status.nextSibling);
+
+                // Show append section for posts
+                document.getElementById('appendSection').classList.add('show');
             } catch (error) {
                 throw new Error('Failed to display post: ' + error.message);
             }
-        }
-
-        // Helper function to get file icon based on MIME type
-        function getFileIcon(mimeType) {
-            if (!mimeType) return '📄';
-            if (mimeType.startsWith('image/')) return '🖼️';
-            if (mimeType.startsWith('video/')) return '🎥';
-            if (mimeType.startsWith('audio/')) return '🎵';
-            if (mimeType.includes('pdf')) return '📕';
-            if (mimeType.includes('zip') || mimeType.includes('tar') || mimeType.includes('gzip')) return '📦';
-            if (mimeType.includes('text')) return '📝';
-            return '📄';
         }
 
         async function init() {
             try {
                 // Extract file ID and key from URL
                 const path = window.location.pathname;
-                const fileId = path.split('/').pop();
+                const pathParts = path.split('/');
+                const pathType = pathParts[1]; // 'f' or 'p'
+                const fileId = pathParts[2];
                 const keyBase64 = window.location.hash.substring(1); // Remove #
 
                 if (!keyBase64) {
@@ -608,47 +751,48 @@
                 // Import key
                 decryptionKey = await dogboxCrypto.importKey(keyBase64);
 
-                // Try downloading as a file first
-                let response = await fetch(`/api/files/${fileId}`);
+                // Determine if this is a post or file based on URL
+                const isPost = pathType === 'p';
 
-                // If we get a 400, it might be a post
-                if (response.status === 400) {
-                    const errorText = await response.text();
-                    if (errorText.includes('post')) {
-                        // This is a post, fetch from posts endpoint
-                        response = await fetch(`/api/posts/${fileId}`);
-                        if (!response.ok) {
-                            throw new Error('Failed to load post');
+                if (isPost) {
+                    // Fetch as post
+                    const response = await fetch(`/api/posts/${fileId}`);
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            throw new Error('Post not found or expired');
                         }
-                        const postData = await response.json();
-                        await handlePostView(postData);
-                        return;
+                        throw new Error('Failed to load post');
                     }
-                }
-
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        throw new Error('File not found or expired');
+                    const postData = await response.json();
+                    await handlePostView(postData);
+                    return;
+                } else {
+                    // Fetch as file
+                    const response = await fetch(`/api/files/${fileId}`);
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            throw new Error('File not found or expired');
+                        }
+                        throw new Error('Failed to download file');
                     }
-                    throw new Error('Failed to download file');
-                }
 
-                // Extract MIME type from response headers
-                mimeType = response.headers.get('content-type');
+                    // Extract MIME type from response headers
+                    mimeType = response.headers.get('content-type');
 
-                encryptedData = await response.arrayBuffer();
+                    encryptedData = await response.arrayBuffer();
 
-                // Ready to decrypt
-                status.classList.remove('loading');
-                status.classList.add('ready');
-                statusText.textContent = '✅ File loaded successfully';
-                fileInfo.classList.add('show');
-                downloadBtn.disabled = false;
+                    // Ready to decrypt
+                    status.classList.remove('loading');
+                    status.classList.add('ready');
+                    statusText.textContent = '✅ File loaded successfully';
+                    fileInfo.classList.add('show');
+                    downloadBtn.disabled = false;
 
-                // Check if file is playable media and show play button
-                if (isPlayableMedia(mimeType)) {
-                    playBtn.style.display = 'inline-block';
-                    playBtn.disabled = false;
+                    // Check if file is playable media and show play button
+                    if (mimeType && MediaUtils.isPlayableMedia(mimeType)) {
+                        playBtn.style.display = 'inline-block';
+                        playBtn.disabled = false;
+                    }
                 }
 
             } catch (error) {
@@ -656,31 +800,6 @@
                 status.classList.add('error');
                 statusText.textContent = '❌ ' + error.message;
             }
-        }
-
-        // Helper function to get file extension from MIME type
-        function getExtensionFromMimeType(mimeType) {
-            if (!mimeType) return '';
-
-            const mimeToExt = {
-                'image/png': '.png',
-                'image/jpeg': '.jpg',
-                'image/gif': '.gif',
-                'image/webp': '.webp',
-                'video/webm': '.webm',
-                'video/mp4': '.mp4',
-                'audio/webm': '.webm',
-                'audio/mpeg': '.mp3',
-                'audio/wav': '.wav',
-                'application/pdf': '.pdf',
-                'text/plain': '.txt',
-                'application/zip': '.zip',
-                'application/gzip': '.tar.gz',
-                'application/x-gzip': '.tar.gz',
-                'application/x-tar': '.tar',
-            };
-
-            return mimeToExt[mimeType] || '';
         }
 
         downloadBtn.addEventListener('click', async () => {
@@ -697,7 +816,7 @@
                 progressText.textContent = 'Starting download...';
 
                 // Determine file extension from MIME type
-                const extension = getExtensionFromMimeType(mimeType);
+                const extension = MediaUtils.getExtensionFromMimeType(mimeType);
                 const filename = 'dogbox_file' + extension;
 
                 // Trigger download
@@ -725,14 +844,6 @@
             }
         });
 
-        // Helper function to check if MIME type is playable media
-        function isPlayableMedia(mimeType) {
-            if (!mimeType) return false;
-            return mimeType.startsWith('image/') ||
-                   mimeType.startsWith('video/') ||
-                   mimeType.startsWith('audio/');
-        }
-
         // Play button handler
         playBtn.addEventListener('click', async () => {
             try {
@@ -759,13 +870,13 @@
                 audioPlayer.style.display = 'none';
 
                 // Show appropriate player
-                if (mimeType.startsWith('image/')) {
+                if (mimeType && mimeType.startsWith('image/')) {
                     imagePlayer.src = blobUrl;
                     imagePlayer.style.display = 'block';
-                } else if (mimeType.startsWith('video/')) {
+                } else if (mimeType && mimeType.startsWith('video/')) {
                     videoPlayer.src = blobUrl;
                     videoPlayer.style.display = 'block';
-                } else if (mimeType.startsWith('audio/')) {
+                } else if (mimeType && mimeType.startsWith('audio/')) {
                     audioPlayer.src = blobUrl;
                     audioPlayer.style.display = 'block';
                 }
@@ -786,14 +897,216 @@
             }
         });
 
+        // === APPEND FUNCTIONALITY ===
+
+        let currentPostId = null;
+        let currentAppendMode = 'markdown';
+        let selectedFile = null;
+
+        // Tab switching
+        document.querySelectorAll('.append-mode-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const mode = tab.dataset.mode;
+                currentAppendMode = mode;
+
+                // Update tab styling
+                document.querySelectorAll('.append-mode-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Show correct content area
+                document.getElementById('markdownAppend').classList.remove('show');
+                document.getElementById('fileAppend').classList.remove('show');
+                document.getElementById(mode === 'markdown' ? 'markdownAppend' : 'fileAppend').classList.add('show');
+            });
+        });
+
+        // File selection
+        const fileDropZone = document.getElementById('fileDropZone');
+        const fileInput = document.getElementById('fileInput');
+        const selectedFileInfo = document.getElementById('selectedFileInfo');
+        const selectedFileName = document.getElementById('selectedFileName');
+
+        fileDropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                selectedFile = e.target.files[0];
+                const fileName = selectedFile.name || 'unknown file';
+                const fileSize = selectedFile.size || 0;
+                selectedFileName.textContent = `${fileName} (${MediaUtils.formatFileSize(fileSize)})`;
+                selectedFileInfo.style.display = 'block';
+            }
+        });
+
+        // Drag and drop
+        fileDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileDropZone.classList.add('dragover');
+        });
+
+        fileDropZone.addEventListener('dragleave', () => {
+            fileDropZone.classList.remove('dragover');
+        });
+
+        fileDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileDropZone.classList.remove('dragover');
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                selectedFile = e.dataTransfer.files[0];
+                const fileName = selectedFile.name || 'unknown file';
+                const fileSize = selectedFile.size || 0;
+                selectedFileName.textContent = `${fileName} (${MediaUtils.formatFileSize(fileSize)})`;
+                selectedFileInfo.style.display = 'block';
+            }
+        });
+
+        // Append button handler
+        document.getElementById('appendBtn').addEventListener('click', async () => {
+            const appendKeyInput = document.getElementById('appendKeyInput');
+            const appendKey = appendKeyInput.value.trim();
+            const appendBtn = document.getElementById('appendBtn');
+            const appendStatus = document.getElementById('appendStatus');
+
+            // Make sure crypto is initialized
+            if (!dogboxCrypto) {
+                appendStatus.style.display = 'block';
+                appendStatus.style.background = '#fee2e2';
+                appendStatus.style.border = '2px solid #ef4444';
+                appendStatus.textContent = '❌ Crypto library not ready. Please refresh the page.';
+                return;
+            }
+
+            // Make sure we have a decryption key
+            if (!decryptionKey) {
+                appendStatus.style.display = 'block';
+                appendStatus.style.background = '#fee2e2';
+                appendStatus.style.border = '2px solid #ef4444';
+                appendStatus.textContent = '❌ No decryption key found. Please make sure the URL includes #key.';
+                return;
+            }
+
+            if (!appendKey) {
+                appendStatus.style.display = 'block';
+                appendStatus.style.background = '#fee2e2';
+                appendStatus.style.border = '2px solid #ef4444';
+                appendStatus.textContent = '❌ Please enter an append key';
+                return;
+            }
+
+            if (!appendKey.startsWith('DOGBOX_KEY_APPEND_')) {
+                appendStatus.style.display = 'block';
+                appendStatus.style.background = '#fee2e2';
+                appendStatus.style.border = '2px solid #ef4444';
+                appendStatus.textContent = '❌ Invalid append key format';
+                return;
+            }
+
+            try {
+                appendBtn.disabled = true;
+                appendStatus.style.display = 'block';
+                appendStatus.style.background = '#dbeafe';
+                appendStatus.style.border = '2px solid #3b82f6';
+                appendStatus.textContent = '⏳ Encrypting and uploading...';
+
+                let contentToAppend;
+                let contentType;
+                let mimeType = null;
+                let fileExtension = null;
+                let fileSize = null;
+
+                if (currentAppendMode === 'markdown') {
+                    const markdownText = document.getElementById('markdownTextarea').value;
+                    if (!markdownText.trim()) {
+                        throw new Error('Please enter some markdown content');
+                    }
+                    contentToAppend = new TextEncoder().encode(markdownText);
+                    contentType = 'markdown';
+                } else {
+                    if (!selectedFile) {
+                        throw new Error('Please select a file to upload');
+                    }
+                    const fileBuffer = await MediaUtils.readFileAsArrayBuffer(selectedFile);
+                    contentToAppend = new Uint8Array(fileBuffer);
+                    contentType = 'file';
+                    mimeType = selectedFile.type || 'application/octet-stream';
+                    fileExtension = (selectedFile.name && selectedFile.name.includes('.')) ?
+                        '.' + selectedFile.name.split('.').pop() : null;
+                    fileSize = selectedFile.size || 0;
+                }
+
+                // Encrypt the content
+                const encryptedData = await dogboxCrypto.encryptFile(contentToAppend, decryptionKey);
+
+                // Convert to base64
+                const encryptedBytes = new Uint8Array(encryptedData);
+                const base64Content = btoa(String.fromCharCode(...encryptedBytes));
+
+                // Prepare request - only include defined values
+                const requestBody = {
+                    append_key: appendKey,
+                    content: base64Content,
+                    content_type: contentType
+                };
+
+                if (mimeType && mimeType !== '') {
+                    requestBody.mime_type = mimeType;
+                }
+                if (fileExtension && fileExtension !== '') {
+                    requestBody.file_extension = fileExtension;
+                }
+                if (fileSize !== null && fileSize !== undefined) {
+                    requestBody.file_size = fileSize;
+                }
+
+                // Send to API
+                const response = await fetch(`/api/posts/${currentPostId}/append`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'Failed to append content');
+                }
+
+                const result = await response.json();
+
+                appendStatus.style.background = '#d1fae5';
+                appendStatus.style.border = '2px solid #10b981';
+                appendStatus.textContent = `✅ Content appended successfully! Refresh the page to see it.`;
+
+                // Clear inputs
+                document.getElementById('markdownTextarea').value = '';
+                selectedFile = null;
+                fileInput.value = '';
+                selectedFileInfo.style.display = 'none';
+
+                setTimeout(() => {
+                    appendBtn.disabled = false;
+                }, 2000);
+
+            } catch (error) {
+                appendStatus.style.display = 'block';
+                appendStatus.style.background = '#fee2e2';
+                appendStatus.style.border = '2px solid #ef4444';
+                appendStatus.textContent = '❌ ' + error.message;
+                appendBtn.disabled = false;
+            }
+        });
+
         // Initialize on load (wait for post-quantum library)
         async function waitForLibraryAndInit() {
-            // Wait for post-quantum library to load
-            if (!window.noblePostQuantumReady) {
-                await new Promise(resolve => {
-                    window.addEventListener('noblePostQuantumReady', resolve, { once: true });
-                });
-            }
+            // Initialize crypto first
+            await initCrypto();
+
+            // Extract post ID for append functionality
+            const path = window.location.pathname;
+            const pathParts = path.split('/');
+            currentPostId = pathParts[2]; // The ID is always at index 2 for /f/:id or /p/:id
+
             init();
         }
         waitForLibraryAndInit();

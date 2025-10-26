@@ -180,9 +180,22 @@
             </p>
         </div>
 
-        <button class="btn" id="downloadBtn" disabled>
-            🔓 Decrypt and Download
-        </button>
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <button class="btn" id="downloadBtn" disabled>
+                🔓 Decrypt and Download
+            </button>
+            <button class="btn" id="playBtn" disabled style="display: none; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                ▶️ Play in Browser
+            </button>
+        </div>
+
+        <div id="mediaPlayer" style="display: none; margin: 30px 0; text-align: center;">
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; max-width: 800px; margin: 0 auto;">
+                <img id="imagePlayer" style="display: none; max-width: 100%; border-radius: 8px;" />
+                <video id="videoPlayer" controls style="display: none; max-width: 100%; border-radius: 8px;"></video>
+                <audio id="audioPlayer" controls style="display: none; width: 100%;"></audio>
+            </div>
+        </div>
 
         <div class="progress" id="progress">
             <div class="progress-bar">
@@ -252,13 +265,19 @@
         const statusText = document.getElementById('statusText');
         const fileInfo = document.getElementById('fileInfo');
         const downloadBtn = document.getElementById('downloadBtn');
+        const playBtn = document.getElementById('playBtn');
         const progress = document.getElementById('progress');
         const progressFill = document.getElementById('progressFill');
         const progressText = document.getElementById('progressText');
+        const mediaPlayer = document.getElementById('mediaPlayer');
+        const imagePlayer = document.getElementById('imagePlayer');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const audioPlayer = document.getElementById('audioPlayer');
 
         let encryptedData = null;
         let decryptionKey = null;
         let mimeType = null;
+        let decryptedBlob = null;
 
         async function init() {
             try {
@@ -294,6 +313,12 @@
                 statusText.textContent = '✅ File loaded successfully';
                 fileInfo.classList.add('show');
                 downloadBtn.disabled = false;
+
+                // Check if file is playable media and show play button
+                if (isPlayableMedia(mimeType)) {
+                    playBtn.style.display = 'inline-block';
+                    playBtn.disabled = false;
+                }
 
             } catch (error) {
                 status.classList.remove('loading');
@@ -363,6 +388,67 @@
                 alert('Decryption failed: ' + error.message);
                 progress.style.display = 'none';
                 downloadBtn.disabled = false;
+            }
+        });
+
+        // Helper function to check if MIME type is playable media
+        function isPlayableMedia(mimeType) {
+            if (!mimeType) return false;
+            return mimeType.startsWith('image/') ||
+                   mimeType.startsWith('video/') ||
+                   mimeType.startsWith('audio/');
+        }
+
+        // Play button handler
+        playBtn.addEventListener('click', async () => {
+            try {
+                playBtn.disabled = true;
+                progress.style.display = 'block';
+                progressFill.style.width = '0%';
+                progressText.textContent = 'Decrypting...';
+
+                // Decrypt file if not already decrypted
+                if (!decryptedBlob) {
+                    const decryptedData = await dogboxCrypto.decryptFile(encryptedData, decryptionKey);
+                    decryptedBlob = new Blob([decryptedData], { type: mimeType });
+                }
+
+                progressFill.style.width = '100%';
+                progressText.textContent = 'Loading media...';
+
+                // Create blob URL
+                const blobUrl = URL.createObjectURL(decryptedBlob);
+
+                // Hide all players first
+                imagePlayer.style.display = 'none';
+                videoPlayer.style.display = 'none';
+                audioPlayer.style.display = 'none';
+
+                // Show appropriate player
+                if (mimeType.startsWith('image/')) {
+                    imagePlayer.src = blobUrl;
+                    imagePlayer.style.display = 'block';
+                } else if (mimeType.startsWith('video/')) {
+                    videoPlayer.src = blobUrl;
+                    videoPlayer.style.display = 'block';
+                } else if (mimeType.startsWith('audio/')) {
+                    audioPlayer.src = blobUrl;
+                    audioPlayer.style.display = 'block';
+                }
+
+                // Show media player
+                mediaPlayer.style.display = 'block';
+                progressText.textContent = 'Ready to play!';
+
+                setTimeout(() => {
+                    progress.style.display = 'none';
+                    playBtn.disabled = false;
+                }, 1000);
+
+            } catch (error) {
+                alert('Failed to play media: ' + error.message);
+                progress.style.display = 'none';
+                playBtn.disabled = false;
             }
         });
 

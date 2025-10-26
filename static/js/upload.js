@@ -172,16 +172,25 @@ class UploadHandler {
             const isPermanent = callbacks.getIsPermanent();
             const expiryHours = callbacks.getExpiryHours();
 
-            console.log('[Upload] Upload options:', { postType, isPermanent, expiryHours });
+            // Extract file extension from original filename
+            const fileExtension = file.name.includes('.')
+                ? '.' + file.name.split('.').pop()
+                : '';
+
+            console.log('[Upload] Upload options:', { postType, isPermanent, expiryHours, fileExtension, mimeType: file.type });
 
             // Upload to server
             const formData = new FormData();
             formData.append("file", new Blob([encryptedData]), "encrypted.bin");
-            formData.append("mime_type", "application/octet-stream");
+            formData.append("mime_type", file.type || "application/octet-stream");
             formData.append("post_type", postType);
             formData.append("is_permanent", isPermanent.toString());
             if (!isPermanent) {
                 formData.append("expiry_hours", expiryHours);
+            }
+            // Preserve original file extension
+            if (fileExtension) {
+                formData.append("file_extension", fileExtension);
             }
 
             console.log('[Upload] Sending POST to /api/upload...');

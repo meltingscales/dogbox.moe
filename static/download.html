@@ -1019,14 +1019,16 @@
                     if (!markdownText.trim()) {
                         throw new Error('Please enter some markdown content');
                     }
-                    contentToAppend = new TextEncoder().encode(markdownText);
+                    // Create a Blob for encryptFile (it expects a File/Blob)
+                    contentToAppend = new Blob([markdownText], { type: 'text/plain' });
                     contentType = 'markdown';
+                    mimeType = 'text/plain';
                 } else {
                     if (!selectedFile) {
                         throw new Error('Please select a file to upload');
                     }
-                    const fileBuffer = await MediaUtils.readFileAsArrayBuffer(selectedFile);
-                    contentToAppend = new Uint8Array(fileBuffer);
+                    // Keep as File object for encryptFile (it needs the type property)
+                    contentToAppend = selectedFile;
                     contentType = 'file';
                     mimeType = selectedFile.type || 'application/octet-stream';
                     fileExtension = (selectedFile.name && selectedFile.name.includes('.')) ?

@@ -12,11 +12,10 @@ use tower_http::services::ServeDir;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-// TEMPORARILY DISABLED FOR DEBUGGING
-// use tower_governor::{
-//     governor::GovernorConfigBuilder,
-//     GovernorLayer,
-// };
+use tower_governor::{
+    governor::GovernorConfigBuilder,
+    GovernorLayer,
+};
 
 mod cleanup;
 mod config;
@@ -112,16 +111,17 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // SECURITY: Rate limiting - TEMPORARILY DISABLED FOR DEBUGGING
-    // let rate_limit_config = GovernorConfigBuilder::default()
-    //     .per_second(2) // 2 requests per second
-    //     .burst_size(10) // Allow burst of 10
-    //     .finish()
-    //     .ok_or_else(|| anyhow::anyhow!("Failed to build rate limit config"))?;
-    //
-    // let rate_limit_layer = GovernorLayer {
-    //     config: std::sync::Arc::new(rate_limit_config),
-    // };
+    // SECURITY: Rate limiting - Very permissive to allow normal usage
+    // 5 req/sec = 300 req/min, burst of 50 allows traffic spikes
+    let governor_conf = GovernorConfigBuilder::default()
+        .per_second(5) // 5 requests per second (300 per minute)
+        .burst_size(50) // Allow burst of 50 requests
+        .finish()
+        .ok_or_else(|| anyhow::anyhow!("Failed to build rate limit config"))?;
+
+    let rate_limit_layer = GovernorLayer {
+        config: std::sync::Arc::new(governor_conf),
+    };
 
     // Build router
     let app = Router::new()
@@ -151,7 +151,7 @@ async fn main() -> anyhow::Result<()> {
         .layer(TraceLayer::new_for_http())
         .layer(axum_middleware::from_fn(middleware::security_headers))
         .layer(axum_middleware::from_fn(middleware::csrf_protection))
-        // .layer(rate_limit_layer)  // TEMPORARILY DISABLED
+        .layer(rate_limit_layer)
         .with_state(app_state);
 
     // Start server
@@ -160,7 +160,13 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("📖 API docs available at http://{}/docs", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+
+    // IMPORTANT: Use into_make_service_with_connect_info to provide SocketAddr
+    // for rate limiting middleware (GovernorLayer needs peer IP)
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>()
+    ).await?;
 
     Ok(())
 }

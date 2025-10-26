@@ -28,6 +28,7 @@ chacha20poly1305 = "0.10"
 blake3 = "1.5"
 rand = "0.8"
 zeroize = "1.7"
+subtle = "2.5"
 
 # UUID generation
 uuid = { version = "1.6", features = ["v4", "serde"] }

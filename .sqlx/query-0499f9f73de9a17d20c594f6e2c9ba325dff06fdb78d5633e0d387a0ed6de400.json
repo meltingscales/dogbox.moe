@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT deletion_token\n            FROM files\n            WHERE id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "deletion_token",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0499f9f73de9a17d20c594f6e2c9ba325dff06fdb78d5633e0d387a0ed6de400"
+}

@@ -90,7 +90,7 @@ async function updateBanners() {
             const adminText = document.getElementById('admin-message-text');
 
             if (adminBanner && adminText) {
-                adminText.innerHTML = data.admin_message;
+                adminText.textContent = data.admin_message;
                 adminBanner.style.display = 'block';
             }
         }

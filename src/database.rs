@@ -2,6 +2,8 @@ use crate::error::Result;
 use crate::models::{FileRecord, PostContent};
 use chrono::{DateTime, Utc};
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
+use subtle::ConstantTimeEq;
+use rand::Rng;
 
 #[derive(Clone)]
 pub struct Database {
@@ -81,18 +83,46 @@ impl Database {
     }
 
     pub async fn delete_file(&self, id: &str, deletion_token: &str) -> Result<bool> {
-        let result = sqlx::query!(
+        // Fetch the file record to get the stored deletion token
+        let file = sqlx::query!(
             r#"
-            DELETE FROM files
-            WHERE id = ? AND deletion_token = ?
+            SELECT deletion_token
+            FROM files
+            WHERE id = ?
             "#,
-            id,
-            deletion_token
+            id
         )
-        .execute(&self.pool)
+        .fetch_optional(&self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        // Use a dummy token if file doesn't exist to prevent timing leak
+        let stored_token = file.as_ref()
+            .map(|f| f.deletion_token.as_str())
+            .unwrap_or("00000000000000000000000000000000");
+
+        // Constant-time comparison to prevent timing attacks
+        let tokens_match = deletion_token.as_bytes().ct_eq(stored_token.as_bytes());
+
+        // Add random delay (0-10ms) to prevent timing analysis
+        let delay_ms = rand::thread_rng().gen_range(0..10);
+        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+
+        // Only delete if tokens match AND file exists
+        if tokens_match.into() && file.is_some() {
+            let result = sqlx::query!(
+                r#"
+                DELETE FROM files
+                WHERE id = ?
+                "#,
+                id
+            )
+            .execute(&self.pool)
+            .await?;
+
+            Ok(result.rows_affected() > 0)
+        } else {
+            Ok(false)
+        }
     }
 
     pub async fn cleanup_expired(&self) -> Result<u64> {

@@ -13,6 +13,20 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> anyhow::Result<Self> {
+        // Validate admin message if set (allow safe characters only)
+        let admin_message = if let Ok(msg) = env::var("ADMIN_MESSAGE") {
+            if !msg.chars().all(|c| {
+                c.is_ascii_alphanumeric() || c.is_whitespace() || matches!(c, ',' | '.' | '-')
+            }) {
+                anyhow::bail!(
+                    "ADMIN_MESSAGE contains invalid characters. Only alphanumeric characters, spaces, commas, periods, and hyphens are allowed to prevent XSS."
+                );
+            }
+            Some(msg)
+        } else {
+            None
+        };
+
         Ok(Self {
             port: env::var("PORT")
                 .unwrap_or_else(|_| "8080".to_string())
@@ -31,7 +45,7 @@ impl Config {
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),
-            admin_message: env::var("ADMIN_MESSAGE").ok(),
+            admin_message,
         })
     }
 }

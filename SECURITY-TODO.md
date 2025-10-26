@@ -6,22 +6,21 @@
   4. ✅ Unbounded database queries - FIXED: Added MAX_POST_CONTENT_ENTRIES limit (1000)
   5. ✅ CDN libraries without SRI - FIXED: Self-hosted all @noble crypto libraries
 
-  🟠 High Severity: 5 Remaining, 1 Fixed ✅
+  🟠 High Severity: 4 Remaining, 2 Fixed ✅
 
   - No authentication for /api/stats endpoint
   - ✅ Missing security headers - FIXED: Added CSP, X-Frame-Options, HSTS, etc.
   - File size validated after loading into memory
-  - Admin message XSS vulnerability
+  - ✅ Admin message XSS vulnerability - FIXED: Restricted to alphanumeric + spaces only
   - And more...
 
-  🟡 Medium Severity: 6
+  🟡 Medium Severity: 5
 
   - Insecure file deletion (data recoverable)
   - Timing attacks on token comparison
   - Database connection pool too small
   - Insufficient security logging
   - Blake3 collision risk in deduplication
-  - Admin message displayed without sanitization
 
   🟢 Low Severity: 3
 

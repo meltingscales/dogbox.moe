@@ -22,6 +22,9 @@ pub enum AppError {
     #[error("File too large (max {max_mb}MB)")]
     FileTooLarge { max_mb: u64 },
 
+    #[error("Payload too large: {0}")]
+    PayloadTooLarge(String),
+
     #[error("Invalid request: {0}")]
     BadRequest(String),
 
@@ -47,6 +50,7 @@ impl IntoResponse for AppError {
             AppError::FileTooLarge { max_mb } => {
                 (StatusCode::PAYLOAD_TOO_LARGE, format!("File too large (max {}MB)", max_mb))
             }
+            AppError::PayloadTooLarge(msg) => (StatusCode::PAYLOAD_TOO_LARGE, msg),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::Internal(e) => {
                 tracing::error!("Internal error: {}", e);

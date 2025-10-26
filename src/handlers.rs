@@ -119,8 +119,24 @@ pub async fn admin_motd(State(config): State<Arc<Config>>) -> impl IntoResponse 
 )]
 pub async fn upload(
     State(config): State<Arc<Config>>,
+    headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<Json<UploadResponse>> {
+    // SECURITY: Validate Content-Length before loading any data into memory
+    if let Some(content_length) = headers.get(header::CONTENT_LENGTH) {
+        if let Ok(length_str) = content_length.to_str() {
+            if let Ok(length) = length_str.parse::<usize>() {
+                if length > crate::constants::MAX_UPLOAD_SIZE {
+                    return Err(AppError::PayloadTooLarge(format!(
+                        "Content-Length {} exceeds maximum upload size of {} bytes",
+                        length,
+                        crate::constants::MAX_UPLOAD_SIZE
+                    )));
+                }
+            }
+        }
+    }
+
     let db = Database::new(&config.database_url).await?;
     let service = FileService::new((*config).clone(), db);
 

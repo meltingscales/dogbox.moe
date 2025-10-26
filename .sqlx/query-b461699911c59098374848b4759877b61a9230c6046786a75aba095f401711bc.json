@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT post_append_key\n            FROM files\n            WHERE id = ? AND post_type = 'post'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "post_append_key",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "b461699911c59098374848b4759877b61a9230c6046786a75aba095f401711bc"
+}

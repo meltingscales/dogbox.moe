@@ -247,19 +247,34 @@ impl Database {
     }
 
     pub async fn verify_append_key(&self, file_id: &str, append_key: &str) -> Result<bool> {
-        let result = sqlx::query!(
+        // SECURITY: Use constant-time comparison to prevent timing attacks
+        // Fetch the post record to get the stored append key
+        let post = sqlx::query!(
             r#"
-            SELECT COUNT(*) as count
+            SELECT post_append_key
             FROM files
-            WHERE id = ? AND post_append_key = ? AND post_type = 'post'
+            WHERE id = ? AND post_type = 'post'
             "#,
-            file_id,
-            append_key
+            file_id
         )
-        .fetch_one(&self.pool)
+        .fetch_optional(&self.pool)
         .await?;
 
-        Ok(result.count > 0)
+        // Use a dummy key if post doesn't exist to prevent timing leak
+        let stored_key = post.as_ref()
+            .and_then(|p| p.post_append_key.as_ref())
+            .map(|k| k.as_str())
+            .unwrap_or("00000000000000000000000000000000");
+
+        // Constant-time comparison to prevent timing attacks
+        let keys_match = append_key.as_bytes().ct_eq(stored_key.as_bytes());
+
+        // Add random delay (0-10ms) to prevent timing analysis
+        let delay_ms = rand::thread_rng().gen_range(0..10);
+        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+
+        // Only return true if keys match AND post exists AND has an append key
+        Ok(keys_match.into() && post.is_some() && post.unwrap().post_append_key.is_some())
     }
 
     pub async fn truncate_all_tables(&self) -> anyhow::Result<()> {

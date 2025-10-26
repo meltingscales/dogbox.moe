@@ -339,4 +339,35 @@ impl Database {
             size_result.total_bytes as i64,
         ))
     }
+
+    /// Get file extension statistics (count by extension)
+    pub async fn get_file_extension_stats(&self) -> Result<std::collections::HashMap<String, i64>> {
+        #[derive(sqlx::FromRow)]
+        struct ExtensionCount {
+            file_extension: Option<String>,
+            count: i64,
+        }
+
+        let results = sqlx::query_as::<_, ExtensionCount>(
+            r#"
+            SELECT file_extension, COUNT(*) as count
+            FROM files
+            WHERE (is_permanent = 1 OR expires_at > datetime('now'))
+              AND post_type = 'file'
+            GROUP BY file_extension
+            ORDER BY count DESC
+            LIMIT 20
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut map = std::collections::HashMap::new();
+        for row in results {
+            let ext = row.file_extension.unwrap_or_else(|| "unknown".to_string());
+            map.insert(ext, row.count);
+        }
+
+        Ok(map)
+    }
 }

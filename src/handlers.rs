@@ -361,6 +361,7 @@ pub async fn stats(
     let db = Database::new(&config.database_url).await?;
 
     let (total, posts, files, permanent, temporary, views, bytes) = db.get_stats().await?;
+    let file_extensions = db.get_file_extension_stats().await?;
 
     // Get disk space information for root filesystem
     let (disk_total_gb, disk_used_gb, disk_free_gb) = match nix::sys::statvfs::statvfs("/") {
@@ -390,5 +391,6 @@ pub async fn stats(
         disk_total_gb,
         disk_used_gb,
         disk_free_gb,
+        file_extensions,
     }))
 }

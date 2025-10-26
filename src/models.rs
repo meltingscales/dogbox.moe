@@ -119,6 +119,7 @@ pub struct StatsResponse {
     pub disk_total_gb: f64,
     pub disk_used_gb: f64,
     pub disk_free_gb: f64,
+    pub file_extensions: std::collections::HashMap<String, i64>,
 }
 
 

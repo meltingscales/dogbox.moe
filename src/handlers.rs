@@ -82,13 +82,13 @@ pub async fn health(State(config): State<Arc<Config>>) -> Json<HealthResponse> {
 /// Get admin message of the day (MOTD)
 ///
 /// SECURITY: Message is validated at startup to only contain safe characters:
-/// alphanumeric, spaces, commas, periods, and hyphens, preventing XSS attacks
+/// alphanumeric, spaces, commas, periods, hyphens, and apostrophes, preventing XSS attacks
 #[utoipa::path(
     get,
     path = "/api/admin-motd",
     tag = "dogbox.moe",
     responses(
-        (status = 200, description = "Admin message (safe characters only: a-z A-Z 0-9 , . - and spaces)", body = String),
+        (status = 200, description = "Admin message (safe characters only: a-z A-Z 0-9 , . - ' and spaces)", body = String),
         (status = 204, description = "No admin message set")
     )
 )]

@@ -16,10 +16,10 @@ impl Config {
         // Validate admin message if set (allow safe characters only)
         let admin_message = if let Ok(msg) = env::var("ADMIN_MESSAGE") {
             if !msg.chars().all(|c| {
-                c.is_ascii_alphanumeric() || c.is_whitespace() || matches!(c, ',' | '.' | '-')
+                c.is_ascii_alphanumeric() || c.is_whitespace() || matches!(c, ',' | '.' | '-' | '\'')
             }) {
                 anyhow::bail!(
-                    "ADMIN_MESSAGE contains invalid characters. Only alphanumeric characters, spaces, commas, periods, and hyphens are allowed to prevent XSS."
+                    "ADMIN_MESSAGE contains invalid characters. Only alphanumeric characters, spaces, commas, periods, hyphens, and apostrophes are allowed to prevent XSS."
                 );
             }
             Some(msg)

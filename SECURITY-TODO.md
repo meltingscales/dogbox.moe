@@ -11,7 +11,7 @@
   - No authentication for /api/stats endpoint
   - ✅ Missing security headers - FIXED: Added CSP, X-Frame-Options, HSTS, etc.
   - ✅ File size validated after loading into memory - FIXED: Added Content-Length header validation
-  - ✅ Admin message XSS vulnerability - FIXED: Restricted to alphanumeric + spaces only
+  - ✅ Admin message XSS vulnerability - FIXED: Restricted to alphanumeric, spaces, commas, periods, hyphens, and apostrophes
   - ✅ Timing attack on append key verification - FIXED: Added constant-time comparison and random delay
   - And more...
 

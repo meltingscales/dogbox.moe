@@ -168,5 +168,10 @@
                 }
             });
         }
+
+        // Update banners (test mode, admin message, max upload size)
+        if (typeof updateBanners === 'function') {
+            updateBanners();
+        }
     });
 </script>

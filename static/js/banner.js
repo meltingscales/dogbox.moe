@@ -61,6 +61,21 @@ async function updateBanners() {
         if (data.max_upload_size) {
             maxUploadSize = data.max_upload_size;
             window.maxUploadSize = maxUploadSize; // Make it available globally
+
+            // Update max upload size display
+            const sizeMB = Math.floor(maxUploadSize / (1024 * 1024));
+
+            // Update by ID (index.html)
+            const maxUploadEl = document.getElementById('max-upload-size');
+            if (maxUploadEl) {
+                maxUploadEl.textContent = `${sizeMB}MB`;
+            }
+
+            // Update by class (post-types.html and others)
+            const maxUploadEls = document.getElementsByClassName('max-upload-size-display');
+            for (let el of maxUploadEls) {
+                el.textContent = `${sizeMB}MB`;
+            }
         }
 
         // Handle test mode banner

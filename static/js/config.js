@@ -13,9 +13,13 @@ const DogboxConfig = {
     apiDocs: '/docs',
     sourceCode: 'https://github.com/meltingscales/dogbox.moe',
 
-    // Limits
-    maxFileSize: 100 * 1024 * 1024, // 100MB in bytes
-    maxFileSizeMB: 100,
+    // Limits (fetched dynamically from API, with defaults as fallback)
+    get maxFileSize() {
+        return window.maxUploadSize || (100 * 1024 * 1024); // Fallback to 100MB
+    },
+    get maxFileSizeMB() {
+        return Math.floor((window.maxUploadSize || (100 * 1024 * 1024)) / (1024 * 1024));
+    },
     defaultExpiryHours: 24,
     maxExpiryHours: 168, // 7 days
 };

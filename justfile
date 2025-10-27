@@ -36,7 +36,7 @@ dev-test:
     @mkdir -p uploads
     @if [ ! -f dogbox.db ]; then just dev-db-init; fi
     @echo "⚠️  Starting dogbox in TEST MODE - all data will be wiped every 24 hours"
-    TEST_DELETE_24HR=true RUST_LOG=dogbox=debug,tower_http=debug cargo run
+    TEST_DELETE_PERIOD_HOURS=24 RUST_LOG=dogbox=debug,tower_http=debug cargo run
 
 # Build for production
 build: sqlx-prepare

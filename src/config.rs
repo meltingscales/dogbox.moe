@@ -7,7 +7,7 @@ pub struct Config {
     pub upload_dir: String,
     pub default_expiry_hours: i64,
     pub max_expiry_hours: i64,
-    pub test_delete_24hr: bool,
+    pub test_delete_period_hours: Option<i64>,
     pub admin_message: Option<String>,
 }
 
@@ -41,10 +41,9 @@ impl Config {
             max_expiry_hours: env::var("MAX_EXPIRY_HOURS")
                 .unwrap_or_else(|_| "168".to_string())
                 .parse()?,
-            test_delete_24hr: env::var("TEST_DELETE_24HR")
-                .unwrap_or_else(|_| "false".to_string())
-                .parse()
-                .unwrap_or(false),
+            test_delete_period_hours: env::var("TEST_DELETE_PERIOD_HOURS")
+                .ok()
+                .and_then(|s| s.parse().ok()),
             admin_message,
         })
     }

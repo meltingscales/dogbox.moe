@@ -63,7 +63,7 @@ pub struct ApiDoc;
     )
 )]
 pub async fn health(State(config): State<Arc<Config>>) -> Json<HealthResponse> {
-    let next_test_delete = if config.test_delete_24hr {
+    let next_test_delete = if config.test_delete_period_hours.is_some() {
         *crate::cleanup::NEXT_TEST_DELETE.read().await
     } else {
         None
@@ -72,7 +72,7 @@ pub async fn health(State(config): State<Arc<Config>>) -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "ok".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        test_mode: config.test_delete_24hr,
+        test_mode: config.test_delete_period_hours.is_some(),
         next_test_delete,
         admin_message: config.admin_message.clone(),
         max_upload_size: crate::constants::MAX_UPLOAD_SIZE,

@@ -45,7 +45,7 @@ echo "✓ Database migrations complete"
 sudo chown -R dogbox:dogbox /opt/dogbox
 sudo chmod +x /opt/dogbox/dogbox
 
-# Install and enable systemd service with 24-hour reset mode and admin message
+# Install and enable systemd service with reset mode and admin message
 sudo mv /tmp/dogbox.service /etc/systemd/system/dogbox.service
 sudo systemctl daemon-reload
 sudo systemctl enable dogbox

@@ -55,6 +55,12 @@ check:
 fmt:
     cargo fmt
 
+# Calculate SHA256 hashes for inline scripts (for CSP)
+# Run this after modifying import maps in HTML files
+hash-scripts:
+    @echo "Calculating SHA256 hashes for inline scripts..."
+    @python3 scripts/hash-inline-scripts.py
+
 # Run database migrations
 migrate:
     @echo "Creating uploads directory..."

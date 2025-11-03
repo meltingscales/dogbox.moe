@@ -96,62 +96,19 @@ clean:
 watch:
     cargo watch -x run
 
-# Create GCP VM if it doesn't exist
-vm-create PROJECT_ID ZONE="us-central1-a":
+# ========================================
+# DEPRECATED: Old VM deployment (replaced by GKE)
+# These commands are kept for reference but are no longer used
+# ========================================
+
+# OLD: Create GCP VM (DEPRECATED - use GKE instead)
+vm-create-old PROJECT_ID ZONE="us-central1-a":
+    @echo "⚠️  WARNING: VM deployment is deprecated. Use 'just gke-setup' instead"
     @bash scripts/vm-create.sh {{PROJECT_ID}} {{ZONE}}
 
-# Show the VM's static IP address and check DNS
-vm-ip PROJECT_ID ZONE="us-central1-a":
-    @bash scripts/check-dns.sh {{PROJECT_ID}} {{ZONE}}
-
-# Deploy to GCP VM
-deploy PROJECT_ID ZONE="us-central1-a": sqlx-prepare (vm-create PROJECT_ID ZONE)
-    @echo "Building release binary..."
-    SQLX_OFFLINE=true RUSTFLAGS="-D warnings" cargo build --release
-    @echo "Copying files to VM..."
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} target/release/dogbox dogbox:/tmp/
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} --recurse static dogbox:/tmp/
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} --recurse migrations dogbox:/tmp/
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} dogbox.service dogbox:/tmp/
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} scripts/vm-install.sh dogbox:/tmp/
-    @echo "Running installation script..."
-    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --command='bash /tmp/vm-install.sh'
-    @echo ""
-    @echo "✓ Deployment complete!"
-    @echo "Service URL: http://$(gcloud compute instances describe dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --format='get(networkInterfaces[0].accessConfigs[0].natIP)'):8080"
-
-# SSH into the VM
-vm-ssh PROJECT_ID ZONE="us-central1-a":
-    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
-
-# View VM logs
-vm-logs PROJECT_ID ZONE="us-central1-a":
-    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --command='sudo journalctl -u dogbox -f'
-
-# Setup nginx with SSL on VM (run after DNS is pointed to VM)
-vm-setup-ssl PROJECT_ID ZONE="us-central1-a":
-    @echo "Copying nginx configuration and setup script..."
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} nginx.conf dogbox:/tmp/
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} scripts/vm-setup-nginx.sh dogbox:/tmp/
-    @echo "Running nginx setup script..."
-    @echo "⚠️  Make sure dogbox.moe DNS is already pointing to the VM IP!"
-    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --command='bash /tmp/vm-setup-nginx.sh'
-    @echo ""
-    @echo "✓ SSL setup complete! Your site should now be available at https://dogbox.moe"
-
-# Stop the VM
-vm-stop PROJECT_ID ZONE="us-central1-a":
-    gcloud compute instances stop dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
-
-# Start the VM
-vm-start PROJECT_ID ZONE="us-central1-a":
-    gcloud compute instances start dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
-
-# Delete the VM
-vm-delete PROJECT_ID ZONE="us-central1-a":
-    @echo "⚠️  This will delete the VM and all data!"
-    @read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
-    gcloud compute instances delete dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
+# OLD: Deploy to VM (DEPRECATED - use 'just gke-deploy' instead)
+deploy-old PROJECT_ID ZONE="us-central1-a":
+    @echo "⚠️  WARNING: VM deployment is deprecated. Use 'just gke-deploy {{PROJECT_ID}}' instead"
 
 # Setup GCP project
 setup-gcp PROJECT_ID:
@@ -219,3 +176,121 @@ install-deps:
 test-upload URL="http://localhost:8080":
     @echo "Running upload/download integration test against {{URL}}..."
     TEST_URL={{URL}} cargo run --bin upload_test --features reqwest
+
+# ========================================
+# GKE Deployment Commands (PRIMARY DEPLOYMENT METHOD)
+# ========================================
+
+# Quick deploy to GKE (recommended)
+deploy PROJECT_ID: (gke-deploy PROJECT_ID)
+
+# Show deployment info (IP, status, logs)
+status:
+    @echo "=== GKE Deployment Status ==="
+    @kubectl get service dogbox-service
+    @echo ""
+    @kubectl get pods -l app=dogbox
+    @echo ""
+    @echo "💡 Access your site at: http://$(kubectl get service dogbox-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+    @echo "💡 Point DNS: dogbox.moe → $(kubectl get service dogbox-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+
+# View live logs
+logs:
+    kubectl logs -f -l app=dogbox --tail=100
+
+# Setup GKE cluster (Autopilot mode - fully managed)
+gke-setup PROJECT_ID REGION="us-central1":
+    @echo "Setting up GKE Autopilot cluster..."
+    gcloud config set project {{PROJECT_ID}}
+    gcloud services enable container.googleapis.com
+    gcloud services enable artifactregistry.googleapis.com
+    @echo "Creating GKE Autopilot cluster (this takes ~5 minutes)..."
+    gcloud container clusters create-auto dogbox-cluster \
+        --region={{REGION}} \
+        --project={{PROJECT_ID}} || echo "Cluster may already exist"
+    @echo "Getting cluster credentials..."
+    gcloud container clusters get-credentials dogbox-cluster --region={{REGION}} --project={{PROJECT_ID}}
+    @echo "✓ GKE cluster ready!"
+
+# Build and push Docker image to Google Container Registry
+gke-build PROJECT_ID: sqlx-prepare
+    @echo "Building Docker image..."
+    docker build -t gcr.io/{{PROJECT_ID}}/dogbox:latest .
+    @echo "Pushing to GCR..."
+    docker push gcr.io/{{PROJECT_ID}}/dogbox:latest
+    @echo "✓ Image pushed to gcr.io/{{PROJECT_ID}}/dogbox:latest"
+
+# Deploy to GKE cluster
+gke-deploy PROJECT_ID: (gke-build PROJECT_ID)
+    @echo "Updating Kubernetes manifests with project ID..."
+    @sed "s/PROJECT_ID/{{PROJECT_ID}}/g" k8s/deployment.yaml > /tmp/deployment.yaml
+    @echo "Applying Kubernetes manifests..."
+    kubectl apply -f k8s/pvc.yaml
+    kubectl apply -f /tmp/deployment.yaml
+    kubectl apply -f k8s/service.yaml
+    @echo "Waiting for deployment to be ready..."
+    kubectl rollout status deployment/dogbox
+    @echo ""
+    @echo "✓ Deployment complete!"
+    @echo ""
+    @echo "Getting service IP (may take a few minutes for load balancer)..."
+    @kubectl get service dogbox-service
+
+# Get GKE service status and external IP
+gke-status:
+    @echo "=== Dogbox Service Status ==="
+    @kubectl get service dogbox-service
+    @echo ""
+    @echo "=== Pods ==="
+    @kubectl get pods -l app=dogbox
+    @echo ""
+    @echo "External IP: (wait for EXTERNAL-IP to appear above)"
+
+# View GKE logs (live tail)
+gke-logs:
+    @echo "Tailing logs from dogbox pod..."
+    kubectl logs -f -l app=dogbox --tail=100
+
+# View all GKE logs
+gke-logs-all:
+    @echo "Fetching all logs from dogbox pod..."
+    kubectl logs -l app=dogbox --tail=500
+
+# SSH into GKE pod (for debugging)
+gke-shell:
+    @echo "Opening shell in dogbox pod..."
+    kubectl exec -it $(kubectl get pod -l app=dogbox -o jsonpath='{.items[0].metadata.name}') -- /bin/sh
+
+# Restart GKE deployment (rolling restart)
+gke-restart:
+    @echo "Restarting dogbox deployment..."
+    kubectl rollout restart deployment/dogbox
+    kubectl rollout status deployment/dogbox
+    @echo "✓ Deployment restarted!"
+
+# Delete GKE deployment (keeps cluster)
+gke-delete-app:
+    @echo "Deleting dogbox application..."
+    kubectl delete -f k8s/service.yaml
+    kubectl delete -f k8s/deployment.yaml
+    @echo "⚠️  Keeping PVC (persistent data). To delete data, run: kubectl delete -f k8s/pvc.yaml"
+    @echo "✓ Application deleted!"
+
+# Delete entire GKE cluster
+gke-delete-cluster PROJECT_ID REGION="us-central1":
+    @echo "⚠️  This will delete the entire GKE cluster and all data!"
+    @read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
+    gcloud container clusters delete dogbox-cluster --region={{REGION}} --project={{PROJECT_ID}} --quiet
+    @echo "✓ Cluster deleted!"
+
+# Scale GKE deployment
+gke-scale REPLICAS="1":
+    @echo "Scaling dogbox to {{REPLICAS}} replicas..."
+    kubectl scale deployment/dogbox --replicas={{REPLICAS}}
+    kubectl rollout status deployment/dogbox
+    @echo "✓ Scaled to {{REPLICAS}} replicas!"
+
+# Get GKE cluster info
+gke-info PROJECT_ID REGION="us-central1":
+    @echo "=== GKE Cluster Info ==="
+    gcloud container clusters describe dogbox-cluster --region={{REGION}} --project={{PROJECT_ID}} --format="table(name,location,status,currentNodeCount)"

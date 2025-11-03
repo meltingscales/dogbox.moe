@@ -22,9 +22,11 @@ impl Database {
     }
 
     pub async fn migrate(&self) -> anyhow::Result<()> {
-        // Note: Migrations are now handled by justfile to avoid double-execution
-        // This function is kept for backward compatibility
-        tracing::info!("Migration check complete (managed externally)");
+        tracing::info!("Running database migrations...");
+        sqlx::migrate!("./migrations")
+            .run(&self.pool)
+            .await?;
+        tracing::info!("✓ Migrations complete");
         Ok(())
     }
 

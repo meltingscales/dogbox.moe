@@ -45,6 +45,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
     curl \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -54,8 +55,9 @@ RUN useradd -m -u 1000 dogbox
 COPY --from=builder /build/target/release/dogbox /app/dogbox
 COPY entrypoint.sh /app/entrypoint.sh
 
-# Copy static files
+# Copy static files and migrations
 COPY static /app/static
+COPY migrations /app/migrations
 
 # Set ownership and make entrypoint executable
 RUN chown -R dogbox:dogbox /app && chmod +x /app/entrypoint.sh

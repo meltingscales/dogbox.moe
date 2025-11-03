@@ -198,6 +198,17 @@ status:
 logs:
     kubectl logs -f -l app=dogbox --tail=100
 
+# Check SSL certificate status
+ssl-status:
+    @echo "=== SSL Certificate Status ==="
+    @kubectl get managedcertificate
+    @echo ""
+    @echo "=== Ingress Status ==="
+    @kubectl get ingress dogbox-ingress
+    @echo ""
+    @echo "💡 Certificate provisioning can take 15-60 minutes"
+    @echo "💡 Once Active, HTTPS will be available at: https://dogbox.moe"
+
 # Setup GKE cluster (Autopilot mode - fully managed)
 gke-setup PROJECT_ID REGION="us-central1":
     @echo "Setting up GKE Autopilot cluster..."

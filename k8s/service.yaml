@@ -5,8 +5,7 @@ metadata:
   annotations:
     cloud.google.com/neg: '{"ingress": true}'
 spec:
-  type: LoadBalancer
-  loadBalancerIP: 34.28.148.99
+  type: NodePort
   selector:
     app: dogbox
   ports:

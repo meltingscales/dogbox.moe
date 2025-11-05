@@ -4,7 +4,7 @@
  * Implements hybrid post-quantum encryption:
  * - ML-KEM-1024 (NIST FIPS 203) for post-quantum key encapsulation
  * - AES-256-GCM for symmetric encryption (128-bit auth tags)
- * - SHA-256 for hashing (BLAKE3 planned)
+ * - BLAKE3 WASM-accelerated hashing (10-15x faster than SHA-256) with SHA-256 fallback
  *
  * How it works:
  * 1. Generate ML-KEM-1024 keypair (public/secret)
@@ -25,9 +25,9 @@
  * - Maximum security level available in NIST FIPS 203
  * - Future-proof against quantum computers
  *
- * Privacy features:
- * - Automatic EXIF/metadata stripping from images (JPEG, PNG, GIF, WebP)
- * - No GPS, camera data, or timestamps exposed
+ * Privacy notice:
+ * - dogbox encrypts files but does NOT strip metadata (EXIF, ID3, etc.)
+ * - Users must remove metadata themselves before uploading
  *
  * Dependencies:
  * - @noble/post-quantum v0.2.0 (ML-KEM-1024 implementation)
@@ -188,60 +188,15 @@ class DogboxCrypto {
         };
     }
 
-    /**
-     * Strip metadata from PNG images for privacy
-     * Note: Only PNG and WebM files should reach this point
-     * Conversion happens before encryption
-     */
-    async stripMetadata(file) {
-        // Only process PNG images (WebM already has metadata stripped during conversion)
-        if (file.type.toLowerCase() !== 'image/png') {
-            return file;
-        }
-
-        try {
-            // Load image into canvas
-            const img = await this.loadImage(file);
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-
-            // Convert canvas back to PNG blob without metadata (lossless)
-            const blob = await new Promise((resolve) => {
-                canvas.toBlob(resolve, 'image/png', 1.0);
-            });
-
-            // Return new file without metadata
-            return new File([blob], file.name, { type: 'image/png' });
-        } catch (err) {
-            console.warn('Failed to strip metadata, using original file:', err);
-            return file;
-        }
-    }
-
-    loadImage(file) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = URL.createObjectURL(file);
-        });
-    }
 
     /**
      * Encrypt file with post-quantum hybrid authenticated encryption
-     * Uses AES-256-GCM with key derived from ML-KEM-768
+     * Uses AES-256-GCM with key derived from ML-KEM-1024
      * Returns: ArrayBuffer (IV prepended to ciphertext)
      */
     async encryptFile(file, hybridKey) {
-        // Strip metadata from images before encryption
-        const cleanFile = await this.stripMetadata(file);
-
-        // Read file as ArrayBuffer
-        const fileData = await this.readFileAsArrayBuffer(cleanFile);
+        // Read file as ArrayBuffer (no metadata stripping - user's responsibility)
+        const fileData = await this.readFileAsArrayBuffer(file);
 
         // Generate random IV (96 bits for GCM)
         const iv = crypto.getRandomValues(new Uint8Array(12));

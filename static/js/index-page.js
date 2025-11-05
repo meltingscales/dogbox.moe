@@ -18,8 +18,7 @@ if (window.DogboxConfig) {
 console.log('[Main] Initializing dogbox upload system...');
 
 const dogboxCrypto = new DogboxCrypto();
-const converter = new FormatConverter();
-const uploadHandler = new UploadHandler(dogboxCrypto, converter);
+const uploadHandler = new UploadHandler(dogboxCrypto);
 
 // Test BLAKE3 WASM is working
 (async () => {
@@ -44,7 +43,6 @@ const progressFill = document.getElementById("progressFill");
 const progressText = document.getElementById("progressText");
 const result = document.getElementById("result");
 const shareLink = document.getElementById("shareLink");
-const converterNotice = document.getElementById("converterNotice");
 
 console.log('[Main] Upload system initialized');
 
@@ -74,18 +72,6 @@ uploadArea.addEventListener("drop", (e) => {
 // Callback functions for upload handler
 let lastProgressLog = 0; // Track last progress log time
 const callbacks = {
-    showConverterNotice: (file) => {
-        console.log('[Main] Showing converter notice for:', file.name, file.type);
-        document.getElementById('originalFileName').textContent = file.name;
-        document.getElementById('originalFileType').textContent = file.type;
-        converterNotice.classList.add('show');
-    },
-
-    hideConverterNotice: () => {
-        console.log('[Main] Hiding converter notice');
-        converterNotice.classList.remove('show');
-    },
-
     showProgress: () => {
         console.log('[Main] Showing progress bar');
         progress.style.display = "block";
@@ -164,17 +150,14 @@ postTypeSelect.addEventListener("change", () => {
         // Show markdown input, hide file upload area
         markdownInputDiv.style.display = "block";
         uploadArea.style.display = "none";
-        converterNotice.style.display = "none";
 
-        // Clear any pending file since posts don't use file upload
-        uploadHandler.pendingFile = null;
+        // Clear file input since posts don't use file upload
         const fileInput = document.getElementById("fileInput");
         if (fileInput) fileInput.value = '';
     } else {
         // Show file upload area, hide markdown input
         markdownInputDiv.style.display = "none";
         uploadArea.style.display = "block";
-        // Note: converterNotice visibility is managed by upload handler
     }
 });
 
@@ -256,11 +239,5 @@ document.getElementById("isPermanent").addEventListener("change", (e) => {
 // Initialize page (load navbar and banners)
 initializePage();
 
-// Event listeners for buttons that were using onclick
+// Event listeners for buttons
 document.getElementById('copyLinkBtn').addEventListener('click', copyLink);
-document.getElementById('convertAndUploadBtn').addEventListener('click', () => {
-    uploadHandler.convertAndUpload(callbacks);
-});
-document.getElementById('cancelConversionBtn').addEventListener('click', () => {
-    uploadHandler.cancelConversion(callbacks);
-});

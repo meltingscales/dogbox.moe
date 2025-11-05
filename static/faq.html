@@ -215,89 +215,63 @@
                 </div>
                 <div class="faq-answer">
                     <p>
-                        <strong>To guarantee 100% metadata removal,</strong>
-                        dogbox accepts these privacy-safe formats:
+                        <strong>dogbox accepts ANY file type.</strong>
                     </p>
-                    <ul>
-                        <li>
-                            <strong>PNG</strong> - For images (lossless, no
-                            metadata)
-                        </li>
-                        <li>
-                            <strong>WebM</strong> - For video and audio (open
-                            codec, metadata-stripped)
-                        </li>
-                        <li>
-                            <strong>TXT</strong> - Plain text files (no metadata)
-                        </li>
-                        <li>
-                            <strong>ZIP</strong> - Compressed archives (up to 1GB)
-                        </li>
-                        <li>
-                            <strong>TAR.GZ</strong> - Compressed archives (up to 1GB)
-                        </li>
-                    </ul>
-
-                    <p style="margin-top: 15px">
-                        <strong>Why this matters:</strong> Other formats (JPEG,
-                        MP4, MP3, etc.) can contain:
-                    </p>
-                    <ul>
-                        <li>📍 GPS coordinates (where you were)</li>
-                        <li>📷 Camera/device information</li>
-                        <li>🕒 Timestamps (when it was created)</li>
-                        <li>👤 Author names and software used</li>
-                        <li>💬 Comments and hidden metadata</li>
-                    </ul>
-
-                    <div class="highlight-box">
-                        <strong>Automatic Conversion:</strong> If you upload a
-                        JPEG, MP4, MP3, or other format, dogbox will offer to convert
-                        it for you (client-side, private): <br />• Images → PNG
-                        (lossless) <br />• Videos/Audio → WebM (high quality,
-                        Opus/VP9 codecs) <br />• MP3 → WebM (strips ID3 metadata tags)
-                        <br /><br />All metadata is stripped during conversion,
-                        which happens entirely in your browser.
-                    </div>
 
                     <div class="warning-box" style="background: #fee2e2; border-left-color: #dc2626;">
                         <strong>⚠️ CRITICAL PRIVACY WARNING:</strong><br/><br/>
-                        <strong>TXT, ZIP, and TAR.GZ files are NOT metadata-stripped!</strong><br/><br/>
-                        These file types can contain privacy-leaking information:
+                        <strong>dogbox encrypts your files but does NOT strip metadata!</strong><br/><br/>
+
+                        Files can contain privacy-leaking metadata such as:
                         <ul style="margin-top: 10px;">
-                            <li><strong>ZIP/TAR.GZ archives:</strong> Files inside may contain EXIF data, GPS coordinates, camera info, author names, timestamps, file paths revealing your username/folder structure, and more</li>
-                            <li><strong>TXT files:</strong> May contain personal information, file paths, system details, or identifying patterns in plain text</li>
+                            <li>📍 <strong>GPS coordinates</strong> - where you were when the file was created</li>
+                            <li>📷 <strong>Camera/device information</strong> - your phone model, serial numbers</li>
+                            <li>🕒 <strong>Timestamps</strong> - when the file was created/modified</li>
+                            <li>👤 <strong>Author names</strong> - your name, computer username</li>
+                            <li>💬 <strong>Comments and hidden data</strong> - embedded notes, edit history</li>
+                            <li>🗂️ <strong>File paths</strong> - revealing your username or folder structure</li>
                         </ul>
-                        <strong style="display: block; margin-top: 10px;">Before uploading TXT, ZIP, or TAR.GZ files:</strong>
-                        <ul style="margin-top: 5px;">
-                            <li>Strip metadata from ALL files inside archives first</li>
-                            <li>Review text files for personal/identifying information</li>
-                            <li>Remove file paths that reveal usernames or system info</li>
-                            <li>Use generic filenames (avoid "john_smith_vacation.zip")</li>
+
+                        <strong style="display: block; margin-top: 15px; font-size: 1.1em;">YOU MUST STRIP METADATA YOURSELF BEFORE UPLOADING!</strong>
+
+                        <p style="margin-top: 15px;"><strong>Recommended tools:</strong></p>
+                        <ul style="margin-top: 10px;">
+                            <li><strong>Images (JPEG, PNG, etc.):</strong>
+                                <ul style="margin-left: 20px; margin-top: 5px;">
+                                    <li><code>exiftool</code> - Command-line tool for all file types</li>
+                                    <li><code>ImageOptim</code> (Mac) - GUI app with metadata removal</li>
+                                    <li><code>mat2</code> (Linux) - Metadata removal tool</li>
+                                    <li>Or convert to PNG using an image editor (strips most metadata)</li>
+                                </ul>
+                            </li>
+                            <li><strong>Videos/Audio (MP4, MP3, etc.):</strong>
+                                <ul style="margin-left: 20px; margin-top: 5px;">
+                                    <li><code>ffmpeg</code> - <code>ffmpeg -i input.mp4 -map_metadata -1 -c:v copy -c:a copy output.mp4</code></li>
+                                    <li><code>HandBrake</code> - GUI video converter</li>
+                                    <li>Or convert to WebM (generally has less metadata)</li>
+                                </ul>
+                            </li>
+                            <li><strong>Documents (PDF, Office, etc.):</strong>
+                                <ul style="margin-left: 20px; margin-top: 5px;">
+                                    <li><code>exiftool</code> - <code>exiftool -all= file.pdf</code></li>
+                                    <li>PDF sanitizers like <code>pdf-redact-tools</code></li>
+                                    <li>Print to PDF (creates clean copy)</li>
+                                </ul>
+                            </li>
+                            <li><strong>Archives (ZIP, TAR, etc.):</strong>
+                                <ul style="margin-left: 20px; margin-top: 5px;">
+                                    <li>Strip metadata from ALL files inside BEFORE archiving</li>
+                                    <li>Check file paths don't reveal identifying info</li>
+                                    <li>Use generic filenames</li>
+                                </ul>
+                            </li>
                         </ul>
-                        <strong style="display: block; margin-top: 10px; color: #991b1b;">
-                            Remember: dogbox encrypts but does NOT sanitize these file types.
-                            The responsibility is on YOU to ensure they don't leak your identity!
+
+                        <strong style="display: block; margin-top: 15px; color: #991b1b; font-size: 1.1em;">
+                            Remember: Encryption protects content, but metadata can still reveal your identity!
+                            dogbox ONLY encrypts - it does NOT sanitize or strip metadata.
                         </strong>
                     </div>
-
-                    <p style="margin-top: 15px">
-                        <strong>Technical Details:</strong>
-                    </p>
-                    <ul>
-                        <li>
-                            PNG: Re-rendered through HTML5 Canvas (no EXIF
-                            support)
-                        </li>
-                        <li>
-                            WebM: MediaRecorder API creates new stream without
-                            metadata
-                        </li>
-                        <li>
-                            All conversions happen locally - your files never
-                            leave your device unprocessed
-                        </li>
-                    </ul>
                 </div>
 
                 <div class="faq-question">
@@ -326,8 +300,12 @@
                         <li>❌ User accounts or authentication</li>
                         <li>❌ Analytics or tracking cookies</li>
                         <li>❌ File content (only encrypted blobs)</li>
-                        <li>❌ EXIF data (stripped before encryption)</li>
                     </ul>
+
+                    <div class="warning-box">
+                        <strong>Note:</strong> File metadata (EXIF, ID3, etc.) is encrypted along with your file content.
+                        dogbox does NOT strip or sanitize metadata - you must do this yourself before uploading!
+                    </div>
                 </div>
 
                 <div class="faq-question">📏 What are the file size limits?</div>

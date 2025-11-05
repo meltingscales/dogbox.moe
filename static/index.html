@@ -288,32 +288,24 @@
             </p>
 
             <div class="privacy-badge">
-                🔒 Zero-Knowledge • ML-KEM-1024 Post-Quantum • EXIF-Free
+                🔒 Zero-Knowledge • ML-KEM-1024 Post-Quantum
             </div>
 
-            <div class="converter-notice" id="converterNotice">
-                <strong>🔄 Format Conversion Required</strong>
+            <div class="warning" style="margin-top: 20px; margin-bottom: 20px;">
+                <strong>⚠️ Metadata Warning</strong>
                 <p style="margin-top: 10px">
-                    For guaranteed metadata-free uploads, dogbox only accepts:
-                    <span class="format-badge">PNG</span>
-                    <span class="format-badge">WebM</span>
+                    dogbox encrypts your files but <strong>does NOT strip metadata</strong> (EXIF, ID3, etc.).
                 </p>
-                <p style="margin-top: 10px; font-size: 0.9em">
-                    Your file: <strong id="originalFileName"></strong> (<span id="originalFileType"></span>)
+                <p style="margin-top: 10px">
+                    Before uploading sensitive files, use tools like:
                 </p>
-                <p style="margin-top: 10px; font-size: 0.9em">
-                    We can convert it for you (client-side, private):
-                </p>
-                <div class="converter-actions">
-                    <button class="btn" id="convertAndUploadBtn">
-                        🔄 Convert & Upload
-                    </button>
-                    <button class="btn" id="cancelConversionBtn" style="background: #6b7280">
-                        Cancel
-                    </button>
-                </div>
-                <p style="margin-top: 15px; font-size: 0.85em; color: #666">
-                    Images → PNG (lossless), Videos/Audio → WebM. All metadata will be stripped.
+                <ul style="margin-top: 10px; margin-left: 20px;">
+                    <li><strong>Images:</strong> ExifTool, ImageOptim, or convert to PNG</li>
+                    <li><strong>Videos/Audio:</strong> FFmpeg, HandBrake, or convert to WebM</li>
+                    <li><strong>Documents:</strong> PDF sanitizers, metadata cleaners</li>
+                </ul>
+                <p style="margin-top: 10px; font-size: 0.9em;">
+                    Metadata can contain GPS coordinates, timestamps, device info, and more.
                 </p>
             </div>
 
@@ -321,7 +313,7 @@
                 <div class="upload-icon">📁</div>
                 <p><strong>Drop file here</strong> or click to browse</p>
                 <p style="color: #999; margin-top: 10px">
-                    Max <span id="max-upload-size">100MB</span> • Accepts PNG, WebM, TXT, ZIP, TAR.GZ (or converts other formats)
+                    Max <span id="max-upload-size">100MB</span> • Accepts any file type
                 </p>
                 <input type="file" id="fileInput" />
             </div>
@@ -472,7 +464,6 @@
         <!-- BLAKE3 WASM hashing library (9KB gzipped, 10-15x faster than SHA-256) -->
         <script src="/static/lib/hash-wasm/blake3.umd.min.js"></script>
         <script src="/static/js/crypto.js"></script>
-        <script src="/static/js/converter.js"></script>
         <script src="/static/js/upload.js"></script>
         <script src="/static/js/banner.js"></script>
         <script src="/static/js/init.js"></script>

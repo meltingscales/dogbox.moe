@@ -5,40 +5,9 @@
  */
 
 class UploadHandler {
-    constructor(dogboxCrypto, converter) {
+    constructor(dogboxCrypto) {
         this.crypto = dogboxCrypto;
-        this.converter = converter;
-        this.pendingFile = null;
-        this.lastProgressLog = 0; // Timestamp of last progress log
-
         console.log('[Upload] UploadHandler initialized');
-    }
-
-    /**
-     * Check if file needs conversion to PNG/WebM
-     */
-    needsConversion(file) {
-        const result = this.converter.needsConversion(file);
-        console.log('[Upload] needsConversion:', file.type, '→', result);
-        return result;
-    }
-
-    /**
-     * Check if file format is allowed (PNG, WebM, TXT, ZIP, TAR.GZ)
-     * MP3 files need conversion to WebM to strip ID3 metadata
-     */
-    isAllowedFormat(file) {
-        const allowed = file.type === 'image/png' ||
-                       file.type === 'video/webm' ||
-                       file.type === 'audio/webm' ||
-                       file.type === 'text/plain' ||
-                       file.type === 'application/zip' ||
-                       file.type === 'application/x-zip-compressed' ||
-                       file.type === 'application/gzip' ||
-                       file.type === 'application/x-gzip' ||
-                       file.type === 'application/x-tar';
-        console.log('[Upload] isAllowedFormat:', file.type, '→', allowed);
-        return allowed;
     }
 
     /**
@@ -47,81 +16,8 @@ class UploadHandler {
     async handleFile(file, callbacks) {
         console.log('[Upload] handleFile called:', file.name, file.type, file.size);
 
-        const needsConversion = this.needsConversion(file);
-        const isAllowed = this.isAllowedFormat(file);
-
-        if (!isAllowed && !needsConversion) {
-            const msg = 'Unsupported file type. Please upload PNG, WebM, TXT, ZIP, or TAR.GZ files, or a file that can be converted (JPEG, MP3, MP4, etc.)';
-            console.error('[Upload] File rejected:', msg);
-            alert(msg);
-            return;
-        }
-
-        if (needsConversion) {
-            console.log('[Upload] File needs conversion, showing converter notice');
-            this.pendingFile = file;
-            callbacks.showConverterNotice(file);
-            return;
-        }
-
-        // File is already in correct format, proceed with upload
-        console.log('[Upload] File is in correct format, proceeding with upload');
+        // Accept all files - no restrictions
         await this.uploadFile(file, callbacks);
-    }
-
-    /**
-     * Cancel conversion
-     */
-    cancelConversion(callbacks) {
-        console.log('[Upload] Conversion cancelled');
-        this.pendingFile = null;
-        callbacks.hideConverterNotice();
-        callbacks.resetFileInput();
-    }
-
-    /**
-     * Convert and upload file
-     */
-    async convertAndUpload(callbacks) {
-        if (!this.pendingFile) {
-            console.error('[Upload] No pending file to convert');
-            return;
-        }
-
-        console.log('[Upload] Starting conversion for:', this.pendingFile.name);
-
-        try {
-            callbacks.hideConverterNotice();
-            callbacks.hideResult();
-            callbacks.showProgress();
-            callbacks.updateProgress(0, 'Converting file format...');
-
-            // Convert file with progress tracking (throttled logging)
-            const convertedFile = await this.converter.convert(this.pendingFile, (progressInfo) => {
-                const conversionProgress = progressInfo.progress || 0;
-                callbacks.updateProgress(conversionProgress * 0.5, `Converting: ${progressInfo.status}... ${Math.round(conversionProgress)}%`);
-
-                // Only log progress every 5 seconds
-                const now = Date.now();
-                if (now - this.lastProgressLog >= 5000) {
-                    console.log('[Upload] Conversion progress:', conversionProgress.toFixed(1) + '%', progressInfo.status);
-                    this.lastProgressLog = now;
-                }
-            });
-
-            console.log('[Upload] Conversion complete:', convertedFile.name, convertedFile.type);
-            this.pendingFile = null;
-
-            // Now upload the converted file
-            await this.uploadFile(convertedFile, callbacks);
-
-        } catch (error) {
-            console.error('[Upload] Conversion failed:', error);
-            alert("Conversion failed: " + error.message);
-            callbacks.hideProgress();
-            callbacks.hideConverterNotice();
-            this.pendingFile = null;
-        }
     }
 
     /**

@@ -96,7 +96,7 @@ class FormatConverter {
             // Create video element
             const video = document.createElement('video');
             video.src = URL.createObjectURL(file);
-            video.muted = true;
+            // Don't mute - we need audio!
 
             // Wait for video to load
             await new Promise((resolve, reject) => {
@@ -115,17 +115,35 @@ class FormatConverter {
             // Set up MediaRecorder to capture canvas stream
             const stream = canvas.captureStream(30); // 30 FPS
 
-            // Add audio track if video has audio
-            if (video.mozHasAudio || video.webkitAudioDecodedByteCount > 0) {
-                const audioContext = new AudioContext();
-                const source = audioContext.createMediaElementSource(video);
-                const dest = audioContext.createMediaStreamDestination();
-                source.connect(dest);
-                stream.addTrack(dest.stream.getAudioTracks()[0]);
+            // Add audio track from video
+            // Create a MediaStream from the video element to capture audio
+            let audioContext = null;
+            let sourceNode = null;
+            let destNode = null;
+
+            try {
+                // Try to capture audio using Web Audio API
+                audioContext = new AudioContext();
+                sourceNode = audioContext.createMediaElementSource(video);
+                destNode = audioContext.createMediaStreamDestination();
+
+                // Connect source to destination
+                sourceNode.connect(destNode);
+                // Also connect to speakers so we can hear it (optional, for debugging)
+                sourceNode.connect(audioContext.destination);
+
+                // Add audio tracks to the stream
+                const audioTracks = destNode.stream.getAudioTracks();
+                audioTracks.forEach(track => stream.addTrack(track));
+
+                console.log('[Converter] Audio tracks added:', audioTracks.length);
+            } catch (audioErr) {
+                console.warn('[Converter] Could not capture audio:', audioErr);
+                // Continue without audio if it fails
             }
 
             const mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'video/webm;codecs=vp9',
+                mimeType: 'video/webm;codecs=vp9,opus',
                 videoBitsPerSecond: 2500000 // 2.5 Mbps
             });
 
@@ -168,6 +186,9 @@ class FormatConverter {
 
             // Clean up
             URL.revokeObjectURL(video.src);
+            if (audioContext) {
+                await audioContext.close();
+            }
 
             // Return new file with .webm extension
             const newName = this.changeExtension(file.name, 'webm');

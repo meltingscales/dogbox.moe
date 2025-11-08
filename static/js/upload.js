@@ -111,9 +111,9 @@ class UploadHandler {
                 console.log('[Upload] File encrypted, size:', encryptedData.byteLength);
             }
 
-            // Hide block viz
+            // Keep block viz visible during upload with "Uploading..." message
             if (this.blockViz) {
-                setTimeout(() => this.blockViz.hide(), 1000);
+                this.blockViz.setMessage('Uploading...');
             }
 
             callbacks.updateProgress(75, 'Uploading encrypted data...');
@@ -165,6 +165,11 @@ class UploadHandler {
 
             const data = await response.json();
             console.log('[Upload] Upload successful, response:', data);
+
+            // Hide block viz after upload completes
+            if (this.blockViz) {
+                setTimeout(() => this.blockViz.hide(), 1000);
+            }
 
             callbacks.updateProgress(100, 'Complete!');
 

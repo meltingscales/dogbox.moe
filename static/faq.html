@@ -211,6 +211,80 @@
                 </div>
 
                 <div class="faq-question">
+                    🧩 How does chunked encryption work?
+                </div>
+                <div class="faq-answer">
+                    <p>
+                        To support large files (up to 5GB) without exhausting browser memory,
+                        dogbox uses <strong>chunked encryption</strong> that processes files
+                        in 64MB segments.
+                    </p>
+
+                    <p style="margin-top: 15px">
+                        <strong>How it works:</strong>
+                    </p>
+                    <ul>
+                        <li>
+                            Files are read and encrypted in 64MB chunks
+                        </li>
+                        <li>
+                            Each chunk is encrypted separately with AES-256-GCM using a unique IV
+                        </li>
+                        <li>
+                            All chunks use the same ML-KEM-1024 derived key (maintains security)
+                        </li>
+                        <li>
+                            Encrypted chunks are stored sequentially with size metadata
+                        </li>
+                    </ul>
+
+                    <p style="margin-top: 15px">
+                        <strong>File Format (Magic Number):</strong>
+                    </p>
+                    <p>
+                        Chunked encrypted files start with the magic number <code>0x444F4743</code>
+                        ("DOGC" in ASCII) for reliable format detection:
+                    </p>
+                    <ul>
+                        <li><strong>Magic number:</strong> 4 bytes (0x444F4743 = "DOGC")</li>
+                        <li><strong>Number of chunks:</strong> 4 bytes (u32 little-endian)</li>
+                        <li><strong>For each chunk:</strong>
+                            <ul style="margin-top: 5px; margin-left: 20px;">
+                                <li>Chunk size: 4 bytes (u32 little-endian)</li>
+                                <li>IV: 12 bytes (AES-GCM initialization vector)</li>
+                                <li>Encrypted data: variable size</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        <strong>Backward Compatibility:</strong> Files encrypted before chunked
+                        encryption was added (no magic number) are automatically detected and
+                        decrypted using the legacy single-chunk format. All your old encrypted
+                        files continue to work!
+                    </div>
+
+                    <div class="highlight-box" style="background: #dbeafe; border-left-color: #3b82f6;">
+                        <strong>Security Properties:</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>Each chunk uses a unique random IV (required for AES-GCM security)</li>
+                            <li>Same ML-KEM-1024 quantum-resistant key derivation</li>
+                            <li>Same 256-bit classical / 192-bit quantum security level</li>
+                            <li>Protects against Shor's algorithm (quantum attacks on RSA/ECC)</li>
+                        </ul>
+                        Chunking is purely a memory optimization - security is identical to
+                        single-chunk encryption!
+                    </div>
+
+                    <p style="margin-top: 15px">
+                        <strong>Block Visualization:</strong> During upload and download,
+                        you'll see a visual grid showing encryption/decryption progress in
+                        real-time. The pattern is deterministically generated from the first
+                        32 bytes of your file, so the same file always shows the same pattern.
+                    </p>
+                </div>
+
+                <div class="faq-question">
                     🎯 What file formats does dogbox accept?
                 </div>
                 <div class="faq-answer">
@@ -312,15 +386,16 @@
                 <div class="faq-answer">
                     <ul>
                         <li>
-                            <strong>Maximum file size:</strong> 1 GB (1,024 MB)
+                            <strong>Maximum file size:</strong> <span class="max-upload-size">5GB</span>
                         </li>
                         <li>
                             <strong>Note:</strong> Files are encrypted before upload,
                             which adds ~1% overhead to the file size
                         </li>
                         <li>
-                            <strong>Tip:</strong> For large files, compress them
-                            into a ZIP archive first
+                            <strong>Large file support:</strong> dogbox uses chunked
+                            encryption (64MB chunks) to handle files up to 5GB without
+                            requiring massive amounts of browser memory
                         </li>
                     </ul>
                 </div>

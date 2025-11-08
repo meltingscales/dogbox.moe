@@ -69,8 +69,8 @@ server {
     listen 80;
     server_name dogbox.moe www.dogbox.moe _;
 
-    # Allow uploads up to 1GB (matches application MAX_UPLOAD_SIZE)
-    client_max_body_size 1024M;
+    # Allow uploads up to 5GB (matches application MAX_UPLOAD_SIZE)
+    client_max_body_size 5120M;
 
     location / {
         proxy_pass http://127.0.0.1:8080;

@@ -34,3 +34,6 @@ Thumbs.db
 
 # Security reports
 /reports/
+
+# Test files
+test-*.bin

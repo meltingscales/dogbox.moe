@@ -1,8 +1,8 @@
 /// Application-wide constants
 /// All magic numbers and constant values should be defined here
 
-/// Maximum upload size in bytes (1 GB)
-pub const MAX_UPLOAD_SIZE: usize = 1024 * 1024 * 1024;
+/// Maximum upload size in bytes (5 GB)
+pub const MAX_UPLOAD_SIZE: usize = 5 * 1024 * 1024 * 1024;
 
 /// Dogbox emoji sequence used in logs and UI
 pub const DOGBOX_EMOJI: &str = "🐕🐾🦴💨";

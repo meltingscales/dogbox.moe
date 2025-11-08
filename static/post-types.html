@@ -291,8 +291,8 @@ Response:
                     </tr>
                     <tr>
                         <td>Max Size</td>
-                        <td><span class="max-upload-size-display">100MB</span> (configurable)</td>
-                        <td><span class="max-upload-size-display">100MB</span> (configurable)</td>
+                        <td><span class="max-upload-size">5GB</span></td>
+                        <td><span class="max-upload-size">5GB</span></td>
                     </tr>
                     <tr>
                         <td>Use Case</td>
@@ -386,7 +386,10 @@ Response:
         <script src="/static/js/config.js"></script>
         <script src="/static/js/banner.js"></script>
         <script src="/static/js/init.js"></script>
-        <script src="/static/js/page-init-simple.js"></script>
+        <script>
+            // Initialize page (loads navbar and banners)
+            initializePage();
+        </script>
         <script src="/static/console-warning.js"></script>
     </body>
 </html>

@@ -807,20 +807,46 @@
 
                 if (isPost) {
                     // Fetch as post
+                    // Show "Downloading..." visualization
+                    if (blockViz) {
+                        blockViz.initialize();
+                        blockViz.show();
+                        blockViz.setMessage('Downloading...');
+                    }
+
                     const response = await fetch(`/api/posts/${fileId}`);
                     if (!response.ok) {
+                        if (blockViz) {
+                            blockViz.hide();
+                        }
                         if (response.status === 404) {
                             throw new Error('Post not found or expired');
                         }
                         throw new Error('Failed to load post');
                     }
                     const postData = await response.json();
+
+                    // Hide block viz after download completes
+                    if (blockViz) {
+                        setTimeout(() => blockViz.hide(), 500);
+                    }
+
                     await handlePostView(postData);
                     return;
                 } else {
                     // Fetch as file
+                    // Show "Downloading..." visualization
+                    if (blockViz) {
+                        blockViz.initialize();
+                        blockViz.show();
+                        blockViz.setMessage('Downloading...');
+                    }
+
                     const response = await fetch(`/api/files/${fileId}`);
                     if (!response.ok) {
+                        if (blockViz) {
+                            blockViz.hide();
+                        }
                         if (response.status === 404) {
                             throw new Error('File not found or expired');
                         }
@@ -831,6 +857,11 @@
                     mimeType = response.headers.get('content-type');
 
                     encryptedData = await response.arrayBuffer();
+
+                    // Hide block viz after download completes
+                    if (blockViz) {
+                        setTimeout(() => blockViz.hide(), 500);
+                    }
 
                     // Ready to decrypt
                     status.classList.remove('loading');

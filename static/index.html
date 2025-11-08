@@ -438,7 +438,7 @@
                 <h3>✅ File uploaded successfully!</h3>
                 <div class="share-link">
                     <input type="text" id="shareLink" readonly />
-                    <button class="btn btn-secondary" onclick="copyLink()">
+                    <button class="btn btn-secondary" id="copyLinkBtn">
                         Copy
                     </button>
                 </div>
@@ -673,6 +673,9 @@
                 document.execCommand("copy");
                 alert("Link copied to clipboard!");
             }
+
+            // Add event listener for copy button
+            document.getElementById('copyLinkBtn').addEventListener('click', copyLink);
 
             function updateResultDisplay(data) {
                 const resultDiv = document.getElementById("result");

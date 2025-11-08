@@ -47,13 +47,11 @@ pub async fn security_headers(
         header::HeaderValue::from_static(
             "default-src 'self'; \
              script-src 'self' 'wasm-unsafe-eval' \
-               'sha256-BvGjH/3kUGy66HlkfVVk1wxDz7jn+3Wy+hpyt+0NzaA==' \
                'sha256-HUvE11OLFz7AoCbhbk01ZWOcwLvkI+CahEfFg54mSTU=' \
                'sha256-SGWGvJu8HcqulHmTV7/WfP/TjcWCtNH40zGJbhmurLQ=' \
                'sha256-UwIxe9p9b2FNZcGBE29ru4ohO+xC1LiOPTC/1s6DRDI=' \
                'sha256-dOFOu+c3tOHIxiHjp4NQ7kBAJNPVqIV2C0nsVeEtLZU=' \
-               'sha256-gXFFdg/UCt0MfJH9IbdwGFsCxpsE4aa9D0vNkYyzRcA=' \
-               'sha256-sjnuFIdsc+nFxKWKrAUB0lEpm1FhtrVaDV4MVHxeRaY=='; \
+               'sha256-gXFFdg/UCt0MfJH9IbdwGFsCxpsE4aa9D0vNkYyzRcA=='; \
              style-src 'self' 'unsafe-inline'; \
              img-src 'self' data: blob:; \
              media-src 'self' blob:; \

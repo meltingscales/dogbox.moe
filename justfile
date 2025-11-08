@@ -272,6 +272,8 @@ gke-deploy PROJECT_ID: (gke-build PROJECT_ID)
     kubectl apply -f k8s/pvc.yaml
     kubectl apply -f /tmp/deployment.yaml
     kubectl apply -f k8s/service.yaml
+    @echo "Forcing rollout restart to pick up new image..."
+    kubectl rollout restart deployment/dogbox
     @echo "Waiting for deployment to be ready..."
     kubectl rollout status deployment/dogbox
     @echo ""

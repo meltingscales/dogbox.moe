@@ -39,7 +39,7 @@ pub async fn security_headers(
     );
 
     // Content Security Policy - restrict resource loading
-    // Script hashes allow specific inline scripts (import maps only - browser requirement)
+    // Script hashes allow specific inline scripts (module initialization only)
     // 'wasm-unsafe-eval' required for BLAKE3 WASM compilation
     // To regenerate hashes: just hash-scripts
     headers.insert(
@@ -47,8 +47,7 @@ pub async fn security_headers(
         header::HeaderValue::from_static(
             "default-src 'self'; \
              script-src 'self' 'wasm-unsafe-eval' \
-               'sha256-UwIxe9p9b2FNZcGBE29ru4ohO+xC1LiOPTC/1s6DRDI=' \
-               'sha256-dOFOu+c3tOHIxiHjp4NQ7kBAJNPVqIV2C0nsVeEtLZU='; \
+               'sha256-hO7UlwPr6RkCY0/VsyQIvXkcSZUEysGSzMicI88SXHE='; \
              style-src 'self' 'unsafe-inline'; \
              img-src 'self' data: blob:; \
              media-src 'self' blob:; \

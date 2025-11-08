@@ -326,32 +326,6 @@
                 🔒 Zero-Knowledge • ML-KEM-1024 Post-Quantum • EXIF-Free
             </div>
 
-            <div class="converter-notice" id="converterNotice">
-                <strong>🔄 Format Conversion Required</strong>
-                <p style="margin-top: 10px">
-                    For guaranteed metadata-free uploads, dogbox only accepts:
-                    <span class="format-badge">PNG</span>
-                    <span class="format-badge">WebM</span>
-                </p>
-                <p style="margin-top: 10px; font-size: 0.9em">
-                    Your file: <strong id="originalFileName"></strong> (<span id="originalFileType"></span>)
-                </p>
-                <p style="margin-top: 10px; font-size: 0.9em">
-                    We can convert it for you (client-side, private):
-                </p>
-                <div class="converter-actions">
-                    <button class="btn" onclick="uploadHandler.convertAndUpload(callbacks)">
-                        🔄 Convert & Upload
-                    </button>
-                    <button class="btn" onclick="uploadHandler.cancelConversion(callbacks)" style="background: #6b7280">
-                        Cancel
-                    </button>
-                </div>
-                <p style="margin-top: 15px; font-size: 0.85em; color: #666">
-                    Images → PNG (lossless), Videos/Audio → WebM. All metadata will be stripped.
-                </p>
-            </div>
-
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📁</div>
                 <p><strong>Drop file here</strong> or click to browse</p>
@@ -525,7 +499,6 @@
         </script>
         <script src="/static/js/crypto.js"></script>
         <script src="/static/js/block-viz.js"></script>
-        <script src="/static/js/converter.js"></script>
         <script src="/static/js/upload.js"></script>
         <script src="/static/js/banner.js"></script>
         <script src="/static/js/init.js"></script>
@@ -540,10 +513,9 @@
             console.log('[Main] Initializing dogbox upload system...');
 
             const dogboxCrypto = new DogboxCrypto();
-            const converter = new FormatConverter();
             const canvas = document.getElementById('blockVizCanvas');
             const blockViz = new BlockVisualization(canvas);
-            const uploadHandler = new UploadHandler(dogboxCrypto, converter, blockViz);
+            const uploadHandler = new UploadHandler(dogboxCrypto, blockViz);
 
             const uploadArea = document.getElementById("uploadArea");
             const fileInput = document.getElementById("fileInput");
@@ -552,7 +524,6 @@
             const progressText = document.getElementById("progressText");
             const result = document.getElementById("result");
             const shareLink = document.getElementById("shareLink");
-            const converterNotice = document.getElementById("converterNotice");
 
             console.log('[Main] Upload system initialized');
 
@@ -582,18 +553,6 @@
             // Callback functions for upload handler
             let lastProgressLog = 0; // Track last progress log time
             const callbacks = {
-                showConverterNotice: (file) => {
-                    console.log('[Main] Showing converter notice for:', file.name, file.type);
-                    document.getElementById('originalFileName').textContent = file.name;
-                    document.getElementById('originalFileType').textContent = file.type;
-                    converterNotice.classList.add('show');
-                },
-
-                hideConverterNotice: () => {
-                    console.log('[Main] Hiding converter notice');
-                    converterNotice.classList.remove('show');
-                },
-
                 showProgress: () => {
                     console.log('[Main] Showing progress bar');
                     progress.style.display = "block";
@@ -672,7 +631,6 @@
                     // Show markdown input, hide file upload area
                     markdownInputDiv.style.display = "block";
                     uploadArea.style.display = "none";
-                    converterNotice.style.display = "none";
 
                     // Clear any pending file since posts don't use file upload
                     uploadHandler.pendingFile = null;
@@ -682,7 +640,6 @@
                     // Show file upload area, hide markdown input
                     markdownInputDiv.style.display = "none";
                     uploadArea.style.display = "block";
-                    // Note: converterNotice visibility is managed by upload handler
                 }
             });
 

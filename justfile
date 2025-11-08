@@ -90,63 +90,6 @@ clean:
 watch:
     cargo watch -x run
 
-# Create GCP VM if it doesn't exist
-vm-create PROJECT_ID ZONE="us-central1-a":
-    @bash scripts/vm-create.sh {{PROJECT_ID}} {{ZONE}}
-
-# Show the VM's static IP address and check DNS
-vm-ip PROJECT_ID ZONE="us-central1-a":
-    @bash scripts/check-dns.sh {{PROJECT_ID}} {{ZONE}}
-
-# Deploy to GCP VM
-deploy PROJECT_ID ZONE="us-central1-a": sqlx-prepare (vm-create PROJECT_ID ZONE)
-    @echo "Building release binary..."
-    SQLX_OFFLINE=true RUSTFLAGS="-D warnings" cargo build --release
-    @echo "Copying files to VM..."
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} target/release/dogbox dogbox:/tmp/
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} --recurse static dogbox:/tmp/
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} --recurse migrations dogbox:/tmp/
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} dogbox.service dogbox:/tmp/
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} scripts/vm-install.sh dogbox:/tmp/
-    @echo "Running installation script..."
-    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --command='bash /tmp/vm-install.sh'
-    @echo ""
-    @echo "✓ Deployment complete!"
-    @echo "Service URL: http://$(gcloud compute instances describe dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --format='get(networkInterfaces[0].accessConfigs[0].natIP)'):8080"
-
-# SSH into the VM
-vm-ssh PROJECT_ID ZONE="us-central1-a":
-    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
-
-# View VM logs
-vm-logs PROJECT_ID ZONE="us-central1-a":
-    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --command='sudo journalctl -u dogbox -f'
-
-# Setup nginx with SSL on VM (run after DNS is pointed to VM)
-vm-setup-ssl PROJECT_ID ZONE="us-central1-a":
-    @echo "Copying nginx configuration and setup script..."
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} nginx.conf dogbox:/tmp/
-    gcloud compute scp --project={{PROJECT_ID}} --zone={{ZONE}} scripts/vm-setup-nginx.sh dogbox:/tmp/
-    @echo "Running nginx setup script..."
-    @echo "⚠️  Make sure dogbox.moe DNS is already pointing to the VM IP!"
-    gcloud compute ssh dogbox --project={{PROJECT_ID}} --zone={{ZONE}} --command='bash /tmp/vm-setup-nginx.sh'
-    @echo ""
-    @echo "✓ SSL setup complete! Your site should now be available at https://dogbox.moe"
-
-# Stop the VM
-vm-stop PROJECT_ID ZONE="us-central1-a":
-    gcloud compute instances stop dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
-
-# Start the VM
-vm-start PROJECT_ID ZONE="us-central1-a":
-    gcloud compute instances start dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
-
-# Delete the VM
-vm-delete PROJECT_ID ZONE="us-central1-a":
-    @echo "⚠️  This will delete the VM and all data!"
-    @read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
-    gcloud compute instances delete dogbox --project={{PROJECT_ID}} --zone={{ZONE}}
-
 # Setup GCP project
 setup-gcp PROJECT_ID:
     @echo "Enabling required GCP services..."

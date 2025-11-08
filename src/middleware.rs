@@ -53,7 +53,7 @@ pub async fn security_headers(
                'sha256-UwIxe9p9b2FNZcGBE29ru4ohO+xC1LiOPTC/1s6DRDI=' \
                'sha256-dOFOu+c3tOHIxiHjp4NQ7kBAJNPVqIV2C0nsVeEtLZU=' \
                'sha256-gXFFdg/UCt0MfJH9IbdwGFsCxpsE4aa9D0vNkYyzRcA=' \
-               'sha256-votBngELLbyGAcBsIYgUufJvLbs3zpB8HqfGudnR3QI=='; \
+               'sha256-sjnuFIdsc+nFxKWKrAUB0lEpm1FhtrVaDV4MVHxeRaY=='; \
              style-src 'self' 'unsafe-inline'; \
              img-src 'self' data: blob:; \
              media-src 'self' blob:; \

@@ -165,25 +165,9 @@ generate-client:
 audit:
     cargo audit
 
-# Generate SHA-256 hash for CSP inline script (provide script content as argument)
-# Usage: just hash-script "console.log('hello');"
-hash-script SCRIPT:
-    @echo -n "{{SCRIPT}}" | openssl dgst -sha256 -binary | openssl base64
-
-# Generate SHA-256 hashes for all inline scripts in index.html
+# Generate SHA-256 hashes for all inline scripts in HTML files
 hash-scripts:
-    @echo "=== Generating CSP hashes for inline scripts in index.html ==="
-    @echo ""
-    @echo "Extracting inline scripts..."
-    @echo ""
-    @# Extract inline script (type="module")
-    @echo "Script 1 (module initialization):"
-    @sed -n '/<script type="module">/,/<\/script>/p' static/index.html | sed '1d;$d' | openssl dgst -sha256 -binary | openssl base64 | sed 's/^/  sha256-/'
-    @echo ""
-    @echo "Add these to CSP in src/middleware.rs:"
-    @echo "  'sha256-<hash>' \\"
-    @echo ""
-    @echo "💡 To hash a custom script: just hash-script \"your script here\""
+    python3 scripts/hash-inline-scripts.py
 
 # Trivy security scan - filesystem
 trivy-fs:

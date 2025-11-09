@@ -44,8 +44,10 @@ use utoipa::OpenApi;
                       - Keys are stored in URL fragments (not sent to server)\n\
                       - No user tracking or analytics\n\n\
                       ## Security\n\
-                      - Hybrid encryption: ML-KEM-768 + ChaCha20-Poly1305\n\
-                      - Post-quantum resistant\n\
+                      - Hybrid encryption: ML-KEM-1024 + AES-256-GCM\n\
+                      - Post-quantum resistant (NIST FIPS 203)\n\
+                      - Security: ~256-bit classical, ~192-bit quantum\n\
+                      - BLAKE3 hashing with SHA-256 fallback\n\
                       - Automatic file expiration\n\
                       - Secure deletion",
         license(name = "MIT"),

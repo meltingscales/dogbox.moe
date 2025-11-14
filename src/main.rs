@@ -88,9 +88,9 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     let config = Config::from_env()?;
 
-    // Initialize database
+    // Initialize database (migrations handled by justfile dev-db-init)
     let db = Database::new(&config.database_url).await?;
-    db.migrate().await?;
+    // db.migrate().await?; // Disabled - migrations run via sqlite3 in justfile
 
     // Create upload directory
     tokio::fs::create_dir_all(&config.upload_dir).await?;
@@ -112,10 +112,10 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // SECURITY: Rate limiting - Very permissive to allow normal usage
-    // 5 req/sec = 300 req/min, burst of 50 allows traffic spikes
+    // 100 req/min = ~1.67 req/sec, with burst of 100 for page loads with many assets
     let governor_conf = GovernorConfigBuilder::default()
-        .per_second(5) // 5 requests per second (300 per minute)
-        .burst_size(50) // Allow burst of 50 requests
+        .per_second(2) // ~2 requests per second (120 per minute, slightly over target)
+        .burst_size(100) // Allow burst of 100 requests for initial page load with many JS modules
         .finish()
         .ok_or_else(|| anyhow::anyhow!("Failed to build rate limit config"))?;
 

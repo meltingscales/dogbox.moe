@@ -9,7 +9,6 @@ default:
 dev-db-init:
     @echo "Creating database and running migrations..."
     @mkdir -p uploads
-    @sqlite3 dogbox.db < migrations/000_migrations.sql
     @sqlite3 dogbox.db < migrations/001_init.sql
     @sqlite3 dogbox.db < migrations/002_post_types.sql
     @sqlite3 dogbox.db < migrations/003_file_extension.sql
@@ -22,11 +21,13 @@ dev-db-reset:
     @rm -f dogbox.db dogbox.db-shm dogbox.db-wal
     @just dev-db-init
 
-# Run the development server
+# Run the development server (always nukes DB for fresh start)
 dev:
     @echo "Setting up development environment..."
     @mkdir -p uploads
-    @if [ ! -f dogbox.db ]; then just dev-db-init; fi
+    @echo "Nuking database for fresh start..."
+    @rm -f dogbox.db dogbox.db-shm dogbox.db-wal
+    @just dev-db-init
     @echo "Starting dogbox in development mode..."
     RUST_LOG=dogbox=debug,tower_http=debug cargo run
 

@@ -1,8 +1,9 @@
 # dogbox.moe automation recipes
 # Install just: https://github.com/casey/just
 #
-# GCP Project ID: dogbox-moe
-# Deploy with: just deploy dogbox-moe
+# GCP Configuration (can be overridden via environment variables)
+export PROJECT_ID := env_var_or_default('PROJECT_ID', 'dogbox-moe')
+export REGION := env_var_or_default('REGION', 'us-central1')
 
 # List available recipes
 default:
@@ -95,9 +96,9 @@ watch:
     cargo watch -x run
 
 # Setup GCP project
-setup-gcp PROJECT_ID:
+setup-gcp:
     @echo "Enabling required GCP services..."
-    gcloud config set project {{PROJECT_ID}}
+    gcloud config set project $PROJECT_ID
     gcloud services enable compute.googleapis.com
     @echo "GCP setup complete!"
 
@@ -194,31 +195,31 @@ logs:
     kubectl logs -f -l app=dogbox --tail=100
 
 # Setup GKE cluster (Autopilot mode - fully managed)
-gke-setup PROJECT_ID="dogbox-moe" REGION="us-central1":
+gke-setup:
     @echo "Setting up GKE Autopilot cluster..."
-    gcloud config set project {{PROJECT_ID}}
+    gcloud config set project $PROJECT_ID
     gcloud services enable container.googleapis.com
     gcloud services enable artifactregistry.googleapis.com
     @echo "Creating GKE Autopilot cluster (this takes ~5 minutes)..."
     gcloud container clusters create-auto dogbox-cluster \
-        --region={{REGION}} \
-        --project={{PROJECT_ID}} || echo "Cluster may already exist"
+        --region=$REGION \
+        --project=$PROJECT_ID || echo "Cluster may already exist"
     @echo "Getting cluster credentials..."
-    gcloud container clusters get-credentials dogbox-cluster --region={{REGION}} --project={{PROJECT_ID}}
+    gcloud container clusters get-credentials dogbox-cluster --region=$REGION --project=$PROJECT_ID
     @echo "✓ GKE cluster ready!"
 
 # Build and push Docker image to Google Container Registry
-gke-build PROJECT_ID="dogbox-moe": sqlx-prepare
+gke-build: sqlx-prepare
     @echo "Building Docker image..."
-    docker build -t gcr.io/{{PROJECT_ID}}/dogbox:latest .
+    docker build -t gcr.io/$PROJECT_ID/dogbox:latest .
     @echo "Pushing to GCR..."
-    docker push gcr.io/{{PROJECT_ID}}/dogbox:latest
-    @echo "✓ Image pushed to gcr.io/{{PROJECT_ID}}/dogbox:latest"
+    docker push gcr.io/$PROJECT_ID/dogbox:latest
+    @echo "✓ Image pushed to gcr.io/$PROJECT_ID/dogbox:latest"
 
 # Deploy to GKE cluster
-gke-deploy PROJECT_ID="dogbox-moe": (gke-build PROJECT_ID)
+gke-deploy: gke-build
     @echo "Updating Kubernetes manifests with project ID..."
-    @sed "s/PROJECT_ID/{{PROJECT_ID}}/g" k8s/deployment.yaml > /tmp/deployment.yaml
+    @sed "s/PROJECT_ID/$PROJECT_ID/g" k8s/deployment.yaml > /tmp/deployment.yaml
     @echo "Applying Kubernetes manifests..."
     kubectl apply -f k8s/pvc.yaml
     kubectl apply -f /tmp/deployment.yaml
@@ -274,10 +275,10 @@ gke-delete-app:
     @echo "✓ Application deleted!"
 
 # Delete entire GKE cluster
-gke-delete-cluster PROJECT_ID="dogbox-moe" REGION="us-central1":
+gke-delete-cluster:
     @echo "⚠️  This will delete the entire GKE cluster and all data!"
     @read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
-    gcloud container clusters delete dogbox-cluster --region={{REGION}} --project={{PROJECT_ID}} --quiet
+    gcloud container clusters delete dogbox-cluster --region=$REGION --project=$PROJECT_ID --quiet
     @echo "✓ Cluster deleted!"
 
 # Scale GKE deployment
@@ -288,6 +289,6 @@ gke-scale REPLICAS="1":
     @echo "✓ Scaled to {{REPLICAS}} replicas!"
 
 # Get GKE cluster info
-gke-info PROJECT_ID="dogbox-moe" REGION="us-central1":
+gke-info:
     @echo "=== GKE Cluster Info ==="
-    gcloud container clusters describe dogbox-cluster --region={{REGION}} --project={{PROJECT_ID}} --format="table(name,location,status,currentNodeCount)"
+    gcloud container clusters describe dogbox-cluster --region=$REGION --project=$PROJECT_ID --format="table(name,location,status,currentNodeCount)"

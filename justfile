@@ -194,7 +194,7 @@ logs:
     kubectl logs -f -l app=dogbox --tail=100
 
 # Setup GKE cluster (Autopilot mode - fully managed)
-gke-setup PROJECT_ID REGION="us-central1":
+gke-setup PROJECT_ID="dogbox-moe" REGION="us-central1":
     @echo "Setting up GKE Autopilot cluster..."
     gcloud config set project {{PROJECT_ID}}
     gcloud services enable container.googleapis.com
@@ -208,7 +208,7 @@ gke-setup PROJECT_ID REGION="us-central1":
     @echo "✓ GKE cluster ready!"
 
 # Build and push Docker image to Google Container Registry
-gke-build PROJECT_ID: sqlx-prepare
+gke-build PROJECT_ID="dogbox-moe": sqlx-prepare
     @echo "Building Docker image..."
     docker build -t gcr.io/{{PROJECT_ID}}/dogbox:latest .
     @echo "Pushing to GCR..."
@@ -216,7 +216,7 @@ gke-build PROJECT_ID: sqlx-prepare
     @echo "✓ Image pushed to gcr.io/{{PROJECT_ID}}/dogbox:latest"
 
 # Deploy to GKE cluster
-gke-deploy PROJECT_ID: (gke-build PROJECT_ID)
+gke-deploy PROJECT_ID="dogbox-moe": (gke-build PROJECT_ID)
     @echo "Updating Kubernetes manifests with project ID..."
     @sed "s/PROJECT_ID/{{PROJECT_ID}}/g" k8s/deployment.yaml > /tmp/deployment.yaml
     @echo "Applying Kubernetes manifests..."
@@ -274,7 +274,7 @@ gke-delete-app:
     @echo "✓ Application deleted!"
 
 # Delete entire GKE cluster
-gke-delete-cluster PROJECT_ID REGION="us-central1":
+gke-delete-cluster PROJECT_ID="dogbox-moe" REGION="us-central1":
     @echo "⚠️  This will delete the entire GKE cluster and all data!"
     @read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
     gcloud container clusters delete dogbox-cluster --region={{REGION}} --project={{PROJECT_ID}} --quiet
@@ -288,6 +288,6 @@ gke-scale REPLICAS="1":
     @echo "✓ Scaled to {{REPLICAS}} replicas!"
 
 # Get GKE cluster info
-gke-info PROJECT_ID REGION="us-central1":
+gke-info PROJECT_ID="dogbox-moe" REGION="us-central1":
     @echo "=== GKE Cluster Info ==="
     gcloud container clusters describe dogbox-cluster --region={{REGION}} --project={{PROJECT_ID}} --format="table(name,location,status,currentNodeCount)"

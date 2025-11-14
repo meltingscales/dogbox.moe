@@ -1,5 +1,8 @@
 # dogbox.moe automation recipes
 # Install just: https://github.com/casey/just
+#
+# GCP Project ID: dogbox-moe
+# Deploy with: just deploy dogbox-moe
 
 # List available recipes
 default:

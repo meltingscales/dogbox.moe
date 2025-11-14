@@ -247,21 +247,18 @@ class DogboxCrypto {
 
     /**
      * Hash data using BLAKE3 (WASM-accelerated)
-     * Falls back to SHA-256 if BLAKE3 is not available
+     * BLAKE3 is required - no fallback to ensure consistent file IDs
      */
     async hash(data) {
         // Check if hash-wasm BLAKE3 is loaded
-        if (window.hashwasm && window.hashwasm.blake3) {
-            // BLAKE3 expects Uint8Array or string
-            const input = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
-            // blake3() returns hex string by default
-            return await window.hashwasm.blake3(input);
+        if (!window.hashwasm || !window.hashwasm.blake3) {
+            throw new Error('BLAKE3 library not loaded. Please refresh the page.');
         }
 
-        // Fallback to SHA-256
-        console.warn('BLAKE3 not available, falling back to SHA-256');
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        return this.arrayBufferToHex(hashBuffer);
+        // BLAKE3 expects Uint8Array or string
+        const input = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+        // blake3() returns hex string by default
+        return await window.hashwasm.blake3(input);
     }
 
     // Utility functions

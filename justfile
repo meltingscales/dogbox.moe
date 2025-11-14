@@ -59,12 +59,6 @@ check:
 fmt:
     cargo fmt
 
-# Calculate SHA256 hashes for inline scripts (for CSP)
-# Run this after modifying import maps in HTML files
-hash-scripts:
-    @echo "Calculating SHA256 hashes for inline scripts..."
-    @python3 scripts/hash-inline-scripts.py
-
 # Run database migrations
 migrate:
     @echo "Creating uploads directory..."
@@ -100,20 +94,6 @@ clean:
 watch:
     cargo watch -x run
 
-# ========================================
-# DEPRECATED: Old VM deployment (replaced by GKE)
-# These commands are kept for reference but are no longer used
-# ========================================
-
-# OLD: Create GCP VM (DEPRECATED - use GKE instead)
-vm-create-old PROJECT_ID ZONE="us-central1-a":
-    @echo "⚠️  WARNING: VM deployment is deprecated. Use 'just gke-setup' instead"
-    @bash scripts/vm-create.sh {{PROJECT_ID}} {{ZONE}}
-
-# OLD: Deploy to VM (DEPRECATED - use 'just gke-deploy' instead)
-deploy-old PROJECT_ID ZONE="us-central1-a":
-    @echo "⚠️  WARNING: VM deployment is deprecated. Use 'just gke-deploy {{PROJECT_ID}}' instead"
-
 # Setup GCP project
 setup-gcp PROJECT_ID:
     @echo "Enabling required GCP services..."
@@ -131,6 +111,10 @@ generate-client:
 # Security audit (Rust dependencies)
 audit:
     cargo audit
+
+# Generate SHA-256 hashes for all inline scripts in HTML files
+hash-scripts:
+    python3 scripts/hash-inline-scripts.py
 
 # Trivy security scan - filesystem
 trivy-fs:
@@ -181,12 +165,19 @@ test-upload URL="http://localhost:8080":
     @echo "Running upload/download integration test against {{URL}}..."
     TEST_URL={{URL}} cargo run --bin upload_test --features reqwest
 
+# Create test files for upload testing
+create-test-files:
+    @echo "Creating test files from /dev/urandom..."
+    @echo "Creating test-1gb.bin (1 GB)..."
+    dd if=/dev/urandom of=test-1gb.bin bs=1M count=1024 status=progress
+    @echo "Creating test-5gb.bin (5 GB)..."
+    dd if=/dev/urandom of=test-5gb.bin bs=1M count=5120 status=progress
+    @echo "✓ Test files created successfully!"
+    @ls -lh test-*.bin
+
 # ========================================
 # GKE Deployment Commands (PRIMARY DEPLOYMENT METHOD)
 # ========================================
-
-# Quick deploy to GKE (recommended)
-deploy PROJECT_ID: (gke-deploy PROJECT_ID)
 
 # Show deployment info (IP, status, logs)
 status:
@@ -201,17 +192,6 @@ status:
 # View live logs
 logs:
     kubectl logs -f -l app=dogbox --tail=100
-
-# Check SSL certificate status
-ssl-status:
-    @echo "=== SSL Certificate Status ==="
-    @kubectl get managedcertificate
-    @echo ""
-    @echo "=== Ingress Status ==="
-    @kubectl get ingress dogbox-ingress
-    @echo ""
-    @echo "💡 Certificate provisioning can take 15-60 minutes"
-    @echo "💡 Once Active, HTTPS will be available at: https://dogbox.moe"
 
 # Setup GKE cluster (Autopilot mode - fully managed)
 gke-setup PROJECT_ID REGION="us-central1":
@@ -243,6 +223,8 @@ gke-deploy PROJECT_ID: (gke-build PROJECT_ID)
     kubectl apply -f k8s/pvc.yaml
     kubectl apply -f /tmp/deployment.yaml
     kubectl apply -f k8s/service.yaml
+    @echo "Forcing rollout restart to pick up new image..."
+    kubectl rollout restart deployment/dogbox
     @echo "Waiting for deployment to be ready..."
     kubectl rollout status deployment/dogbox
     @echo ""

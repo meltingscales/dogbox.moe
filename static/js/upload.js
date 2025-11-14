@@ -5,8 +5,10 @@
  */
 
 class UploadHandler {
-    constructor(dogboxCrypto) {
+    constructor(dogboxCrypto, blockViz) {
         this.crypto = dogboxCrypto;
+        this.blockViz = blockViz;
+
         console.log('[Upload] UploadHandler initialized');
     }
 
@@ -67,6 +69,12 @@ class UploadHandler {
 
             callbacks.updateProgress(60, 'Encrypting content...');
 
+            // Initialize and show block visualization (now works with chunked encryption for all file sizes!)
+            if (this.blockViz) {
+                this.blockViz.initialize();
+                this.blockViz.show();
+            }
+
             // For posts, prioritize markdown content; if no markdown, use file
             let encryptedData;
             let mimeType;
@@ -76,17 +84,36 @@ class UploadHandler {
                 // Encrypt markdown content
                 console.log('[Upload] Encrypting markdown content:', markdownContent.length, 'chars');
                 const markdownBlob = new Blob([markdownContent], { type: 'text/plain' });
-                encryptedData = await this.crypto.encryptFile(markdownBlob, key);
+                encryptedData = await this.crypto.encryptFileWithProgress(markdownBlob, key, (progressData) => {
+                    // Update block visualization
+                    if (this.blockViz && progressData.decryptedBlocks && progressData.decryptedBlocks.length > 0) {
+                        this.blockViz.decryptBlocks(progressData.decryptedBlocks);
+                    }
+                    // Update progress bar
+                    callbacks.updateProgress(60 + (progressData.percentage * 0.15), `Encrypting... ${Math.round(progressData.percentage)}%`);
+                });
                 mimeType = 'text/plain';
                 fileExtension = '.md';
                 console.log('[Upload] Markdown encrypted, size:', encryptedData.byteLength);
             } else {
                 // Encrypt file
-                console.log('[Upload] Encrypting file...');
-                encryptedData = await this.crypto.encryptFile(file, key);
+                console.log('[Upload] Encrypting file, size:', file.size, 'bytes');
+                encryptedData = await this.crypto.encryptFileWithProgress(file, key, (progressData) => {
+                    // Update block visualization
+                    if (this.blockViz && progressData.decryptedBlocks && progressData.decryptedBlocks.length > 0) {
+                        this.blockViz.decryptBlocks(progressData.decryptedBlocks);
+                    }
+                    // Update progress bar
+                    callbacks.updateProgress(60 + (progressData.percentage * 0.15), `Encrypting... ${Math.round(progressData.percentage)}%`);
+                });
                 mimeType = file.type || "application/octet-stream";
                 fileExtension = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
                 console.log('[Upload] File encrypted, size:', encryptedData.byteLength);
+            }
+
+            // Keep block viz visible during upload with "Uploading..." message
+            if (this.blockViz) {
+                this.blockViz.setMessage('Uploading...');
             }
 
             callbacks.updateProgress(75, 'Uploading encrypted data...');
@@ -138,6 +165,11 @@ class UploadHandler {
 
             const data = await response.json();
             console.log('[Upload] Upload successful, response:', data);
+
+            // Hide block viz after upload completes
+            if (this.blockViz) {
+                setTimeout(() => this.blockViz.hide(), 1000);
+            }
 
             callbacks.updateProgress(100, 'Complete!');
 

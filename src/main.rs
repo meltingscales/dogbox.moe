@@ -73,6 +73,17 @@ async fn serve_prohibited_uploads() -> impl IntoResponse {
     }
 }
 
+async fn serve_favicon() -> impl IntoResponse {
+    match tokio::fs::read("static/favicon.ico").await {
+        Ok(content) => (
+            StatusCode::OK,
+            [(axum::http::header::CONTENT_TYPE, "image/x-icon")],
+            content
+        ).into_response(),
+        Err(_) => (StatusCode::NOT_FOUND, "Favicon not found").into_response(),
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize tracing
@@ -127,6 +138,7 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         // Frontend routes
         .route("/", get(serve_index))
+        .route("/favicon.ico", get(serve_favicon))
         .route("/f/:id", get(serve_download))
         .route("/p/:id", get(serve_download))
         .route("/faq", get(serve_faq))

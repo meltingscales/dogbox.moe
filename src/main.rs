@@ -73,6 +73,13 @@ async fn serve_prohibited_uploads() -> impl IntoResponse {
     }
 }
 
+async fn serve_dogpaste() -> impl IntoResponse {
+    match tokio::fs::read_to_string("static/dogpaste.html").await {
+        Ok(content) => Html(content).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load page").into_response(),
+    }
+}
+
 async fn serve_favicon() -> impl IntoResponse {
     match tokio::fs::read("static/favicon.ico").await {
         Ok(content) => (
@@ -99,9 +106,9 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     let config = Config::from_env()?;
 
-    // Initialize database (migrations handled by justfile dev-db-init)
+    // Initialize database and run migrations
     let db = Database::new(&config.database_url).await?;
-    // db.migrate().await?; // Disabled - migrations run via sqlite3 in justfile
+    db.migrate().await?;
 
     // Create upload directory
     tokio::fs::create_dir_all(&config.upload_dir).await?;
@@ -141,6 +148,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/favicon.ico", get(serve_favicon))
         .route("/f/:id", get(serve_download))
         .route("/p/:id", get(serve_download))
+        .route("/dogpaste", get(serve_dogpaste))
         .route("/faq", get(serve_faq))
         .route("/post-types", get(serve_post_types))
         .route("/prohibited-uploads", get(serve_prohibited_uploads))
@@ -154,6 +162,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/files/:id", delete(handlers::delete_file))
         .route("/api/posts/:id", get(handlers::view_post))
         .route("/api/posts/:id/append", post(handlers::append_to_post))
+        .route("/api/dogpaste", post(handlers::dogpaste_create))
+        .route("/api/dogpaste/:id", get(handlers::dogpaste_view))
         // Static files
         .nest_service("/static", ServeDir::new("static"))
         // API docs

@@ -92,6 +92,8 @@
                     document.getElementById("total-uploads").textContent = data.total_uploads.toLocaleString();
                     document.getElementById("total-posts").textContent = data.total_posts.toLocaleString();
                     document.getElementById("total-files").textContent = data.total_files.toLocaleString();
+                    document.getElementById("total-dogpastes").textContent = data.total_dogpastes.toLocaleString();
+                    document.getElementById("dogpaste-views").textContent = data.dogpaste_views.toLocaleString();
                     document.getElementById("permanent-count").textContent = data.permanent_count.toLocaleString();
                     document.getElementById("temporary-count").textContent = data.temporary_count.toLocaleString();
                     document.getElementById("total-views").textContent = data.total_views.toLocaleString();

@@ -17,6 +17,7 @@ dev-db-init:
     @sqlite3 dogbox.db < migrations/002_post_types.sql
     @sqlite3 dogbox.db < migrations/003_file_extension.sql
     @sqlite3 dogbox.db < migrations/004_post_content_types.sql
+    @sqlite3 dogbox.db < migrations/005_dogpaste.sql
     @echo "Database initialized!"
 
 # Reset database (clean and reinitialize)

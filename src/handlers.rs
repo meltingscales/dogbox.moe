@@ -17,7 +17,7 @@ use utoipa::OpenApi;
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(health, admin_motd, upload, download, delete_file, view_post, append_to_post, stats),
+    paths(health, admin_motd, upload, download, delete_file, view_post, append_to_post, stats, dogpaste_create, dogpaste_view),
     components(schemas(
         HealthResponse,
         UploadRequest,
@@ -28,7 +28,10 @@ use utoipa::OpenApi;
         PostContentView,
         AppendRequest,
         AppendResponse,
-        StatsResponse
+        StatsResponse,
+        DogpasteCreateRequest,
+        DogpasteCreateResponse,
+        DogpasteViewResponse
     )),
     tags(
         (name = "dogbox.moe", description = "Privacy-focused file hosting with E2EE")
@@ -397,6 +400,7 @@ pub async fn stats(
 
     let (total, posts, files, permanent, temporary, views, bytes) = db.get_stats().await?;
     let file_extensions = db.get_file_extension_stats().await?;
+    let (dogpastes, dogpaste_views) = db.get_dogpaste_stats().await?;
 
     // Get disk space information for root filesystem
     let (disk_total_gb, disk_used_gb, disk_free_gb) = match nix::sys::statvfs::statvfs("/") {
@@ -419,13 +423,124 @@ pub async fn stats(
         total_uploads: total,
         total_posts: posts,
         total_files: files,
+        total_dogpastes: dogpastes,
         permanent_count: permanent,
         temporary_count: temporary,
         total_views: views,
+        dogpaste_views,
         storage_mb: (bytes as f64) / (1024.0 * 1024.0),
         disk_total_gb,
         disk_used_gb,
         disk_free_gb,
         file_extensions,
+    }))
+}
+
+/// Create a dogpaste (short encrypted paste)
+#[utoipa::path(
+    post,
+    path = "/api/dogpaste",
+    tag = "dogbox.moe",
+    request_body = DogpasteCreateRequest,
+    responses(
+        (status = 200, description = "Paste created successfully", body = DogpasteCreateResponse),
+        (status = 400, description = "Invalid request"),
+        (status = 409, description = "ID already exists (collision)")
+    )
+)]
+pub async fn dogpaste_create(
+    State(config): State<Arc<Config>>,
+    Json(req): Json<crate::models::DogpasteCreateRequest>,
+) -> Result<Json<crate::models::DogpasteCreateResponse>> {
+    use base64::{Engine as _, engine::general_purpose};
+
+    // Validate ID format (5 chars, human-friendly charset)
+    if req.id.len() != 5 || !req.id.chars().all(|c| crate::constants::DOGPASTE_CHARSET.contains(c)) {
+        return Err(AppError::BadRequest(format!(
+            "Invalid ID format. Must be 5 characters from charset: {}",
+            crate::constants::DOGPASTE_CHARSET
+        )));
+    }
+
+    // Decode base64 encrypted data
+    let encrypted_data = general_purpose::URL_SAFE_NO_PAD
+        .decode(&req.encrypted_data)
+        .map_err(|e| AppError::BadRequest(format!("Invalid base64 data: {}", e)))?;
+
+    // Create record
+    let now = chrono::Utc::now().timestamp();
+    let expires_at = now + (24 * 60 * 60); // 24 hours
+
+    let db = Database::new(&config.database_url).await?;
+
+    // Try to insert with collision handling (max 3 retries)
+    // Note: Client generates the ID, so collision means the client should
+    // regenerate. We return an error to have them try again with a new ID.
+    db.create_dogpaste(&req.id, &encrypted_data, expires_at)
+        .await
+        .map_err(|e| {
+            if e.to_string().contains("UNIQUE constraint failed") {
+                // Collision detected - client should retry with new ID
+                // With 29^5 = ~20M IDs, collisions are rare (~0.005% at 1000 pastes)
+                AppError::BadRequest("ID collision detected. Please try again (the client will auto-retry with a new ID).".to_string())
+            } else {
+                e
+            }
+        })?;
+
+    Ok(Json(crate::models::DogpasteCreateResponse {
+        success: true,
+        id: req.id,
+    }))
+}
+
+/// View a dogpaste
+#[utoipa::path(
+    get,
+    path = "/api/dogpaste/{id}",
+    tag = "dogbox.moe",
+    params(
+        ("id" = String, Path, description = "Paste ID (5 alphanumeric characters)")
+    ),
+    responses(
+        (status = 200, description = "Paste content", body = DogpasteViewResponse),
+        (status = 404, description = "Paste not found or expired")
+    )
+)]
+pub async fn dogpaste_view(
+    State(config): State<Arc<Config>>,
+    Path(id): Path<String>,
+) -> Result<Json<crate::models::DogpasteViewResponse>> {
+    use base64::{Engine as _, engine::general_purpose};
+
+    // Validate ID format (human-friendly charset)
+    if id.len() != 5 || !id.chars().all(|c| crate::constants::DOGPASTE_CHARSET.contains(c)) {
+        return Err(AppError::NotFound);
+    }
+
+    let db = Database::new(&config.database_url).await?;
+
+    // Get paste from database
+    let record = db.get_dogpaste(&id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+
+    // Check if expired
+    let now = chrono::Utc::now().timestamp();
+    if record.expires_at < now {
+        // Delete expired paste
+        db.delete_dogpaste(&id).await.ok();
+        return Err(AppError::NotFound);
+    }
+
+    // Increment view counter
+    db.increment_dogpaste_views(&id).await.ok();
+
+    // Encode data as base64
+    let encrypted_data_b64 = general_purpose::URL_SAFE_NO_PAD.encode(&record.encrypted_data);
+
+    Ok(Json(crate::models::DogpasteViewResponse {
+        encrypted_data: encrypted_data_b64,
+        created_at: record.created_at,
     }))
 }

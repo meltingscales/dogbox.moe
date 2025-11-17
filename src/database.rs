@@ -128,7 +128,8 @@ impl Database {
     }
 
     pub async fn cleanup_expired(&self) -> Result<u64> {
-        let result = sqlx::query!(
+        // Clean up expired files
+        let files_result = sqlx::query!(
             r#"
             DELETE FROM files
             WHERE is_permanent = 0 AND expires_at <= datetime('now')
@@ -137,7 +138,22 @@ impl Database {
         .execute(&self.pool)
         .await?;
 
-        Ok(result.rows_affected())
+        // Clean up expired dogpastes
+        let now = chrono::Utc::now().timestamp();
+        let pastes_result = sqlx::query(
+            "DELETE FROM dogpaste WHERE expires_at <= ?"
+        )
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+
+        let total = files_result.rows_affected() + pastes_result.rows_affected();
+
+        if pastes_result.rows_affected() > 0 {
+            tracing::debug!("🗑️  Cleaned up {} expired dogpastes", pastes_result.rows_affected());
+        }
+
+        Ok(total)
     }
 
     pub async fn find_by_hash(&self, blake3_hash: &str) -> Result<Option<FileRecord>> {
@@ -404,5 +420,66 @@ impl Database {
         }
 
         Ok(map)
+    }
+
+    // Dogpaste methods
+    pub async fn create_dogpaste(&self, id: &str, encrypted_data: &[u8], expires_at: i64) -> Result<()> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            "INSERT INTO dogpaste (id, encrypted_data, created_at, expires_at, views) VALUES (?, ?, ?, ?, 0)"
+        )
+        .bind(id)
+        .bind(encrypted_data)
+        .bind(now)
+        .bind(expires_at)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn get_dogpaste(&self, id: &str) -> Result<Option<crate::models::DogpasteRecord>> {
+        let record = sqlx::query_as::<_, crate::models::DogpasteRecord>(
+            "SELECT id, encrypted_data, created_at, expires_at, views FROM dogpaste WHERE id = ?"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(record)
+    }
+
+    pub async fn delete_dogpaste(&self, id: &str) -> Result<()> {
+        sqlx::query("DELETE FROM dogpaste WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn increment_dogpaste_views(&self, id: &str) -> Result<()> {
+        sqlx::query("UPDATE dogpaste SET views = views + 1 WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_dogpaste_stats(&self) -> Result<(i64, i64)> {
+        // Get count of active (non-expired) dogpastes
+        let now = chrono::Utc::now().timestamp();
+
+        #[derive(sqlx::FromRow)]
+        struct DogpasteStats {
+            count: i64,
+            total_views: i64,
+        }
+
+        let stats = sqlx::query_as::<_, DogpasteStats>(
+            "SELECT COUNT(*) as count, COALESCE(SUM(views), 0) as total_views FROM dogpaste WHERE expires_at > ?"
+        )
+        .bind(now)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok((stats.count, stats.total_views))
     }
 }

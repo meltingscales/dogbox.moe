@@ -147,9 +147,11 @@ pub struct StatsResponse {
     pub total_uploads: i64,
     pub total_posts: i64,
     pub total_files: i64,
+    pub total_dogpastes: i64,
     pub permanent_count: i64,
     pub temporary_count: i64,
     pub total_views: i64,
+    pub dogpaste_views: i64,
     pub storage_mb: f64,
     pub disk_total_gb: f64,
     pub disk_used_gb: f64,
@@ -270,4 +272,32 @@ impl FileRecord {
     pub fn get_post_type(&self) -> PostType {
         self.post_type.parse().unwrap_or(PostType::File)
     }
+}
+
+// Dogpaste models
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct DogpasteCreateRequest {
+    pub id: String,
+    pub encrypted_data: String,  // Base64-encoded encrypted data
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct DogpasteCreateResponse {
+    pub success: bool,
+    pub id: String,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct DogpasteViewResponse {
+    pub encrypted_data: String,  // Base64-encoded encrypted data
+    pub created_at: i64,         // Unix timestamp
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct DogpasteRecord {
+    pub id: String,
+    pub encrypted_data: Vec<u8>,
+    pub created_at: i64,
+    pub expires_at: i64,
+    pub views: i64,
 }

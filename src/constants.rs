@@ -12,3 +12,8 @@ pub const CLEANUP_INTERVAL_SECS: u64 = 3600;
 
 /// Maximum number of content entries per post (prevents memory exhaustion)
 pub const MAX_POST_CONTENT_ENTRIES: i64 = 1000;
+
+/// Dogpaste character set for IDs and encryption keys
+/// Human-friendly: excludes ambiguous characters (0, O, 1, l, I)
+/// This ensures codes are easy to type and read
+pub const DOGPASTE_CHARSET: &str = "23456789abcdefghjkmnpqrstuvwxyz";

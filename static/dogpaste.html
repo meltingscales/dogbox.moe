@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Dogpaste - Encrypted Pastebin</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Oxygen, Ubuntu, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 0;
+                margin: 0;
+            }
+
+            .main-wrapper {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: calc(100vh - 60px);
+                padding: 20px;
+                padding-top: 80px;
+            }
+
+            .container {
+                background: white;
+                border-radius: 16px;
+                padding: 40px;
+                max-width: 800px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            }
+
+            h1 {
+                font-size: 2.5em;
+                margin-bottom: 10px;
+                color: #333;
+            }
+
+            .subtitle {
+                color: #666;
+                margin-bottom: 30px;
+                font-size: 1.1em;
+            }
+
+            .warning {
+                background: #fef3c7;
+                border: 2px solid #f59e0b;
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 20px;
+                font-size: 0.9em;
+            }
+
+            .warning strong {
+                color: #92400e;
+            }
+
+            .warning ul {
+                margin-top: 10px;
+                margin-left: 20px;
+            }
+
+            .warning li {
+                margin: 5px 0;
+            }
+
+            textarea {
+                width: 100%;
+                min-height: 300px;
+                padding: 15px;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
+                resize: vertical;
+                margin-bottom: 20px;
+            }
+
+            textarea:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+
+            .btn {
+                padding: 12px 24px;
+                background: #667eea;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 1em;
+                transition: all 0.3s;
+                width: 100%;
+            }
+
+            .btn:hover:not(:disabled) {
+                background: #5568d3;
+            }
+
+            .btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .btn-secondary {
+                background: #10b981;
+            }
+
+            .btn-secondary:hover:not(:disabled) {
+                background: #059669;
+            }
+
+            .result {
+                display: none;
+                background: #f0fdf4;
+                border: 2px solid #10b981;
+                border-radius: 8px;
+                padding: 20px;
+                margin-top: 20px;
+            }
+
+            .result.show {
+                display: block;
+            }
+
+            .share-link {
+                display: flex;
+                gap: 10px;
+                margin-top: 15px;
+            }
+
+            .share-link input {
+                flex: 1;
+                padding: 12px;
+                border: 2px solid #ddd;
+                border-radius: 6px;
+                font-family: monospace;
+                font-size: 0.9em;
+            }
+
+            .loading {
+                text-align: center;
+                margin-top: 20px;
+                color: #666;
+            }
+
+            .paste-content {
+                background: #f8f9fa;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                padding: 20px;
+                margin-top: 20px;
+                font-family: 'Courier New', monospace;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                max-height: 600px;
+                overflow-y: auto;
+            }
+
+            .view-mode {
+                display: none;
+            }
+
+            .create-mode {
+                display: block;
+            }
+
+            .info-badge {
+                display: inline-block;
+                background: #667eea;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 0.9em;
+                margin-bottom: 20px;
+            }
+
+            footer {
+                margin-top: 30px;
+                text-align: center;
+                color: #666;
+                font-size: 0.9em;
+            }
+
+            footer a {
+                color: #667eea;
+                text-decoration: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="navbar-placeholder"></div>
+
+        <div class="main-wrapper">
+            <div class="container">
+                <h1><span id="page-logo"></span> Dogpaste</h1>
+                <p class="subtitle">Encrypted pastebin with client-side encryption</p>
+
+                <div class="info-badge">
+                    🔒 PBKDF2-based Encryption • Client-Side Only
+                </div>
+
+                <div class="warning">
+                    <strong>⚠️ Security Warning</strong>
+                    <p style="margin-top: 10px">
+                        Dogpaste uses <strong>11-character codes</strong> (6-char encryption key + 5-char ID):
+                    </p>
+                    <ul>
+                        <li><strong>Human-friendly:</strong> Uses charset <code>23456789abcdefghjkmnpqrstuvwxyz</code> (no ambiguous chars like 0/O, 1/l/I)</li>
+                        <li><strong>Guessable:</strong> 29^6 = ~594 million key combinations (not cryptographically secure)</li>
+                        <li><strong>PBKDF2:</strong> Keys are derived using 100,000 iterations to slow down brute force</li>
+                        <li><strong>No forward secrecy:</strong> Anyone who guesses the code can decrypt your paste</li>
+                        <li><strong>Short URLs:</strong> Super easy to type and share but less secure than full-length keys</li>
+                    </ul>
+                    <p style="margin-top: 10px; font-weight: bold;">
+                        ⚠️ DO NOT use for sensitive data! This is like regular pastebin with basic encryption.
+                    </p>
+                    <p style="margin-top: 10px;">
+                        For maximum security, use the main file upload feature with ML-KEM-1024 post-quantum encryption.
+                    </p>
+                </div>
+
+                <!-- Create Mode -->
+                <div class="create-mode" id="createMode">
+                    <textarea id="pasteContent" placeholder="Paste your text here...&#10;&#10;Your content will be encrypted client-side before upload.&#10;You'll receive a short code to decrypt it later."></textarea>
+                    <button class="btn" id="createBtn">Create Encrypted Paste</button>
+                    <div class="loading" id="loading" style="display: none;">
+                        <p>Encrypting and uploading...</p>
+                    </div>
+                </div>
+
+                <!-- View Mode -->
+                <div class="view-mode" id="viewMode">
+                    <div class="loading" id="loadingView">
+                        <p>Decrypting paste...</p>
+                    </div>
+                    <div class="paste-content" id="pasteDisplay" style="display: none;"></div>
+                    <button class="btn" id="newPasteBtn" style="margin-top: 20px; display: none;">Create New Paste</button>
+                </div>
+
+                <!-- Result -->
+                <div class="result" id="result">
+                    <h3>✅ Paste created successfully!</h3>
+                    <div class="share-link">
+                        <input type="text" id="shareLink" readonly />
+                        <button class="btn btn-secondary" id="copyLinkBtn">Copy</button>
+                    </div>
+                    <p style="margin-top: 15px; font-size: 0.9em; color: #666">
+                        Share this link to allow access. The encryption code is in the URL (after #).
+                    </p>
+                    <div class="warning" style="margin-top: 15px;">
+                        ⚠️ <strong>Save this link!</strong> The paste will auto-delete in 24 hours by default.
+                    </div>
+                    <button class="btn" id="anotherPasteBtn" style="margin-top: 15px;">Create Another Paste</button>
+                </div>
+
+                <footer>
+                    <p>
+                        Content is encrypted in your browser before upload.<br />
+                        <a href="/">Back to Upload</a> •
+                        <a href="/docs">API Documentation</a>
+                    </p>
+                </footer>
+            </div>
+        </div>
+
+        <script src="/static/js/config.js"></script>
+        <script src="/static/js/banner.js"></script>
+        <script src="/static/js/init.js"></script>
+        <script src="/static/js/dogpaste.js"></script>
+        <script src="/static/console-warning.js"></script>
+    </body>
+</html>

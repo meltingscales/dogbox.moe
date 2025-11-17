@@ -189,6 +189,9 @@ const newPasteBtn = document.getElementById('newPasteBtn');
 const loadingView = document.getElementById('loadingView');
 const pasteDisplay = document.getElementById('pasteDisplay');
 
+// Initialize page (loads navbar and banners)
+initializePage();
+
 // Check if we're viewing a paste (hash in URL)
 if (window.location.hash && window.location.hash.length > 1) {
     // View mode

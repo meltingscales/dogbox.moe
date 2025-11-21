@@ -20,6 +20,7 @@
         let encryptedData = null;
         let decryptionKey = null;
         let mimeType = null;
+        let fileExtension = null;
         let decryptedBlob = null;
         let dogboxCrypto = null;
 
@@ -256,6 +257,19 @@
                     // Extract MIME type from response headers
                     mimeType = response.headers.get('content-type');
 
+                    // Extract file extension from Content-Disposition header
+                    const contentDisposition = response.headers.get('content-disposition');
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+                        if (filenameMatch && filenameMatch[1]) {
+                            const filename = filenameMatch[1];
+                            const extMatch = filename.match(/(\.[^.]+)$/);
+                            if (extMatch) {
+                                fileExtension = extMatch[1];
+                            }
+                        }
+                    }
+
                     encryptedData = await response.arrayBuffer();
 
                     // Ready to decrypt
@@ -292,8 +306,8 @@
                 progressFill.style.width = '100%';
                 progressText.textContent = 'Starting download...';
 
-                // Determine file extension from MIME type
-                const extension = MediaUtils.getExtensionFromMimeType(mimeType);
+                // Use file extension from API if available, otherwise determine from MIME type
+                const extension = fileExtension || MediaUtils.getExtensionFromMimeType(mimeType);
                 const filename = 'dogbox_file' + extension;
 
                 // Trigger download

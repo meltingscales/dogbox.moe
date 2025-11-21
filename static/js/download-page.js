@@ -301,9 +301,19 @@
                 progressFill.style.width = '0%';
                 progressText.textContent = 'Decrypting...';
 
-                // Decrypt file
+                // Decrypt file with progress callback
                 console.log('[DownloadPage] Starting decryption...');
-                const decryptedData = await dogboxCrypto.decryptFile(encryptedData, decryptionKey);
+                const decryptedData = await dogboxCrypto.decryptFileWithProgress(
+                    encryptedData,
+                    decryptionKey,
+                    (progressInfo) => {
+                        // Update progress bar
+                        if (progressInfo.percentage) {
+                            progressFill.style.width = `${progressInfo.percentage}%`;
+                            progressText.textContent = `Decrypting... ${Math.round(progressInfo.percentage)}%`;
+                        }
+                    }
+                );
                 console.log('[DownloadPage] Decryption successful, size:', decryptedData.byteLength, 'bytes');
 
                 progressFill.style.width = '100%';
@@ -354,7 +364,17 @@
 
                 // Decrypt file if not already decrypted
                 if (!decryptedBlob) {
-                    const decryptedData = await dogboxCrypto.decryptFile(encryptedData, decryptionKey);
+                    const decryptedData = await dogboxCrypto.decryptFileWithProgress(
+                        encryptedData,
+                        decryptionKey,
+                        (progressInfo) => {
+                            // Update progress bar
+                            if (progressInfo.percentage) {
+                                progressFill.style.width = `${progressInfo.percentage}%`;
+                                progressText.textContent = `Decrypting... ${Math.round(progressInfo.percentage)}%`;
+                            }
+                        }
+                    );
                     decryptedBlob = new Blob([decryptedData], { type: mimeType });
                 }
 

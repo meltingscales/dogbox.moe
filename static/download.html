@@ -506,7 +506,18 @@
     <!-- Post-quantum crypto library (ML-KEM-1024) - Self-hosted version 0.2.0 -->
     <!-- SECURITY: Self-hosted to eliminate CDN supply chain risk -->
     <!-- ML-KEM-1024 Post-Quantum Cryptography Setup -->
-    <script type="module" src="/static/js/ml-kem-init.js"></script>
+    <script type="module" src="/static/js/ml-kem-init.js" onerror="console.error('[DownloadPage] Failed to load ml-kem-init.js module')"></script>
+    <script>
+        // Catch module loading errors
+        window.addEventListener('error', function(e) {
+            if (e.filename && e.filename.includes('ml-kem-init.js')) {
+                console.error('[DownloadPage] Module loading error for ml-kem-init.js:', e.message, e.filename, e.lineno, e.colno);
+            }
+            if (e.filename && e.filename.includes('@noble/post-quantum')) {
+                console.error('[DownloadPage] Module loading error for @noble/post-quantum:', e.message, e.filename, e.lineno, e.colno);
+            }
+        }, true);
+    </script>
     <!-- BLAKE3 WASM hashing library (9KB gzipped, 10-15x faster than SHA-256) -->
     <!-- BLAKE3 is embedded as base64 WASM in the UMD bundle -->
     <script src="/static/lib/hash-wasm/blake3.umd.min.js"></script>

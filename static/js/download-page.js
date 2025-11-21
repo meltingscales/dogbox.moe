@@ -26,12 +26,29 @@
 
         // Initialize crypto when ready
         async function initCrypto() {
+            console.log('[DownloadPage] Waiting for post-quantum library...');
+
             if (!window.noblePostQuantumReady) {
-                await new Promise(resolve => {
+                // Wait for library with timeout
+                const timeout = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Crypto library failed to load (timeout after 10 seconds). This may be due to a network error or browser compatibility issue.')), 10000);
+                });
+
+                const libraryReady = new Promise(resolve => {
                     window.addEventListener('noblePostQuantumReady', resolve, { once: true });
                 });
+
+                try {
+                    await Promise.race([libraryReady, timeout]);
+                    console.log('[DownloadPage] Post-quantum library loaded successfully');
+                } catch (error) {
+                    console.error('[DownloadPage] Failed to load crypto library:', error);
+                    throw error;
+                }
             }
+
             dogboxCrypto = new DogboxCrypto();
+            console.log('[DownloadPage] DogboxCrypto initialized');
         }
 
         // Handle post viewing (markdown + file attachments)
@@ -635,16 +652,30 @@
 
         // Initialize on load (wait for post-quantum library)
         async function waitForLibraryAndInit() {
-            // Initialize crypto first
-            await initCrypto();
+            console.log('[DownloadPage] waitForLibraryAndInit() started');
+            try {
+                // Initialize crypto first
+                console.log('[DownloadPage] Calling initCrypto()...');
+                await initCrypto();
+                console.log('[DownloadPage] initCrypto() completed');
 
-            // Extract post ID for append functionality
-            const path = window.location.pathname;
-            const pathParts = path.split('/');
-            currentPostId = pathParts[2]; // The ID is always at index 2 for /f/:id or /p/:id
+                // Extract post ID for append functionality
+                const path = window.location.pathname;
+                const pathParts = path.split('/');
+                currentPostId = pathParts[2]; // The ID is always at index 2 for /f/:id or /p/:id
+                console.log('[DownloadPage] Extracted post ID:', currentPostId);
 
-            init();
+                console.log('[DownloadPage] Calling init()...');
+                init();
+            } catch (error) {
+                console.error('[DownloadPage] waitForLibraryAndInit() failed:', error);
+                // Update UI to show error
+                status.classList.remove('loading');
+                status.classList.add('error');
+                statusText.textContent = '❌ Failed to initialize: ' + error.message;
+            }
         }
+        console.log('[DownloadPage] Script loaded, calling waitForLibraryAndInit()');
         waitForLibraryAndInit();
 
         // Initialize page (load navbar and banners)

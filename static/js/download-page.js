@@ -214,6 +214,8 @@
 
         async function init() {
             try {
+                console.log('[DownloadPage] Initializing...');
+
                 // Extract file ID and key from URL
                 const path = window.location.pathname;
                 const pathParts = path.split('/');
@@ -221,12 +223,17 @@
                 const fileId = pathParts[2];
                 const keyBase64 = window.location.hash.substring(1); // Remove #
 
+                console.log('[DownloadPage] Path type:', pathType, 'File ID:', fileId, 'Key length:', keyBase64 ? keyBase64.length : 'null');
+
                 if (!keyBase64) {
+                    console.error('[DownloadPage] No decryption key found in URL hash');
                     throw new Error('No decryption key found in URL');
                 }
 
                 // Import key
+                console.log('[DownloadPage] Importing decryption key...');
                 decryptionKey = await dogboxCrypto.importKey(keyBase64);
+                console.log('[DownloadPage] Key imported successfully');
 
                 // Determine if this is a post or file based on URL
                 const isPost = pathType === 'p';
@@ -273,6 +280,13 @@
                 }
 
             } catch (error) {
+                console.error('[DownloadPage] Initialization failed:', error);
+                console.error('[DownloadPage] Error details:', {
+                    message: error.message,
+                    name: error.name,
+                    stack: error.stack,
+                    url: window.location.href
+                });
                 status.classList.remove('loading');
                 status.classList.add('error');
                 statusText.textContent = '❌ ' + error.message;
@@ -281,13 +295,16 @@
 
         downloadBtn.addEventListener('click', async () => {
             try {
+                console.log('[DownloadPage] Download button clicked');
                 downloadBtn.disabled = true;
                 progress.style.display = 'block';
                 progressFill.style.width = '0%';
                 progressText.textContent = 'Decrypting...';
 
                 // Decrypt file
+                console.log('[DownloadPage] Starting decryption...');
                 const decryptedData = await dogboxCrypto.decryptFile(encryptedData, decryptionKey);
+                console.log('[DownloadPage] Decryption successful, size:', decryptedData.byteLength, 'bytes');
 
                 progressFill.style.width = '100%';
                 progressText.textContent = 'Starting download...';
@@ -315,6 +332,12 @@
                 }, 1000);
 
             } catch (error) {
+                console.error('[DownloadPage] Download failed:', error);
+                console.error('[DownloadPage] Error details:', {
+                    message: error.message,
+                    name: error.name,
+                    stack: error.stack
+                });
                 alert('Decryption failed: ' + error.message);
                 progress.style.display = 'none';
                 downloadBtn.disabled = false;

@@ -149,43 +149,72 @@ class DogboxCrypto {
      * Handles both prefixed (DOGBOX_KEY_SYMMETRIC_) and legacy formats
      */
     async importKey(base64Key) {
-        if (!window.noblePostQuantum || !window.noblePostQuantum.ml_kem1024) {
-            throw new Error('Post-quantum library not loaded');
+        try {
+            if (!window.noblePostQuantum || !window.noblePostQuantum.ml_kem1024) {
+                console.error('[DogboxCrypto] Post-quantum library not loaded');
+                throw new Error('Post-quantum library not loaded');
+            }
+
+            console.log('[DogboxCrypto] Importing key, length:', base64Key.length);
+
+            // Remove prefix if present
+            let cleanKey = base64Key;
+            if (base64Key.startsWith('DOGBOX_KEY_SYMMETRIC_')) {
+                cleanKey = base64Key.substring('DOGBOX_KEY_SYMMETRIC_'.length);
+                console.log('[DogboxCrypto] Removed DOGBOX_KEY_SYMMETRIC_ prefix');
+            }
+
+            console.log('[DogboxCrypto] Clean key length:', cleanKey.length);
+
+            const combinedData = new Uint8Array(this.base64ToArrayBuffer(cleanKey));
+            console.log('[DogboxCrypto] Combined data size:', combinedData.length, 'bytes');
+
+            // ML-KEM-1024 secret key is 3168 bytes, ciphertext is 1568 bytes
+            const kemSecretKeyLength = 3168;
+            const expectedTotalLength = 3168 + 1568; // 4736 bytes
+            console.log('[DogboxCrypto] Expected total length:', expectedTotalLength, 'bytes, actual:', combinedData.length, 'bytes');
+
+            if (combinedData.length !== expectedTotalLength) {
+                console.error('[DogboxCrypto] Key data length mismatch! Expected', expectedTotalLength, 'bytes but got', combinedData.length, 'bytes');
+                throw new Error(`Invalid key length: expected ${expectedTotalLength} bytes, got ${combinedData.length} bytes`);
+            }
+
+            const kemSecretKey = combinedData.slice(0, kemSecretKeyLength);
+            const kemCiphertext = combinedData.slice(kemSecretKeyLength);
+            console.log('[DogboxCrypto] Split into secret key:', kemSecretKey.length, 'bytes, ciphertext:', kemCiphertext.length, 'bytes');
+
+            // Decapsulate to recover shared secret
+            console.log('[DogboxCrypto] Decapsulating to recover shared secret...');
+            const sharedSecret = window.noblePostQuantum.ml_kem1024.decapsulate(kemCiphertext, kemSecretKey);
+            console.log('[DogboxCrypto] Decapsulation successful, shared secret length:', sharedSecret.length);
+
+            // Derive AES-256 key from shared secret (first 32 bytes)
+            const aesKeyData = sharedSecret.slice(0, 32);
+
+            // Import as Web Crypto key
+            const aesKey = await crypto.subtle.importKey(
+                'raw',
+                aesKeyData,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+
+            console.log('[DogboxCrypto] Key import successful');
+            return {
+                aesKey: aesKey,
+                kemSecretKey: kemSecretKey,
+                kemCiphertext: kemCiphertext
+            };
+        } catch (error) {
+            console.error('[DogboxCrypto] Key import failed:', error);
+            console.error('[DogboxCrypto] Error details:', {
+                message: error.message,
+                stack: error.stack,
+                keyLength: base64Key ? base64Key.length : 'null'
+            });
+            throw error;
         }
-
-        // Remove prefix if present
-        let cleanKey = base64Key;
-        if (base64Key.startsWith('DOGBOX_KEY_SYMMETRIC_')) {
-            cleanKey = base64Key.substring('DOGBOX_KEY_SYMMETRIC_'.length);
-        }
-
-        const combinedData = new Uint8Array(this.base64ToArrayBuffer(cleanKey));
-
-        // ML-KEM-1024 secret key is 3168 bytes, ciphertext is 1568 bytes
-        const kemSecretKeyLength = 3168;
-        const kemSecretKey = combinedData.slice(0, kemSecretKeyLength);
-        const kemCiphertext = combinedData.slice(kemSecretKeyLength);
-
-        // Decapsulate to recover shared secret
-        const sharedSecret = window.noblePostQuantum.ml_kem1024.decapsulate(kemCiphertext, kemSecretKey);
-
-        // Derive AES-256 key from shared secret (first 32 bytes)
-        const aesKeyData = sharedSecret.slice(0, 32);
-
-        // Import as Web Crypto key
-        const aesKey = await crypto.subtle.importKey(
-            'raw',
-            aesKeyData,
-            { name: 'AES-GCM', length: 256 },
-            false,
-            ['encrypt', 'decrypt']
-        );
-
-        return {
-            aesKey: aesKey,
-            kemSecretKey: kemSecretKey,
-            kemCiphertext: kemCiphertext
-        };
     }
 
     /**
@@ -366,24 +395,47 @@ class DogboxCrypto {
      * Uses AES-256-GCM with key derived from ML-KEM-768
      */
     async decryptFile(encryptedData, hybridKey) {
-        const data = new Uint8Array(encryptedData);
+        try {
+            console.log('[DogboxCrypto] Decrypting file, encrypted data size:', encryptedData.byteLength, 'bytes');
 
-        // Extract IV (first 12 bytes)
-        const iv = data.slice(0, 12);
-        const ciphertext = data.slice(12);
+            const data = new Uint8Array(encryptedData);
 
-        // Decrypt using the AES key from the hybrid key structure
-        const decrypted = await crypto.subtle.decrypt(
-            {
-                name: 'AES-GCM',
-                iv: iv,
-                tagLength: 128
-            },
-            hybridKey.aesKey,
-            ciphertext
-        );
+            // Extract IV (first 12 bytes)
+            const iv = data.slice(0, 12);
+            const ciphertext = data.slice(12);
+            console.log('[DogboxCrypto] IV length:', iv.length, 'bytes, ciphertext length:', ciphertext.length, 'bytes');
 
-        return decrypted;
+            if (iv.length !== 12) {
+                console.error('[DogboxCrypto] Invalid IV length:', iv.length);
+                throw new Error(`Invalid IV length: expected 12 bytes, got ${iv.length} bytes`);
+            }
+
+            // Decrypt using the AES key from the hybrid key structure
+            console.log('[DogboxCrypto] Starting AES-GCM decryption...');
+            const decrypted = await crypto.subtle.decrypt(
+                {
+                    name: 'AES-GCM',
+                    iv: iv,
+                    tagLength: 128
+                },
+                hybridKey.aesKey,
+                ciphertext
+            );
+
+            console.log('[DogboxCrypto] Decryption successful, decrypted size:', decrypted.byteLength, 'bytes');
+            return decrypted;
+        } catch (error) {
+            console.error('[DogboxCrypto] Decryption failed:', error);
+            console.error('[DogboxCrypto] Error details:', {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+                dataSize: encryptedData ? encryptedData.byteLength : 'null',
+                hasKey: !!hybridKey,
+                hasAesKey: !!(hybridKey && hybridKey.aesKey)
+            });
+            throw new Error('Decryption failed: ' + error.message);
+        }
     }
 
     /**
@@ -408,30 +460,38 @@ class DogboxCrypto {
      * tied to the actual encrypted data for security visualization
      */
     async decryptFileWithProgress(encryptedData, hybridKey, onProgress) {
-        const data = new Uint8Array(encryptedData);
-        const totalBlocks = 4096; // Fixed grid of 64x64 blocks
+        try {
+            console.log('[DogboxCrypto] Starting decryption with progress, data size:', encryptedData.byteLength, 'bytes');
 
-        // Generate pseudo-random block order based on first 32 bytes
-        const seed = data.slice(0, Math.min(32, data.length));
-        const blockOrder = await this.generateBlockOrder(seed, totalBlocks);
+            const data = new Uint8Array(encryptedData);
+            const totalBlocks = 4096; // Fixed grid of 64x64 blocks
 
-        // Track which blocks to show as we progress
-        let currentBlockIndex = 0;
+            // Generate pseudo-random block order based on first 32 bytes
+            const seed = data.slice(0, Math.min(32, data.length));
+            const blockOrder = await this.generateBlockOrder(seed, totalBlocks);
 
-        // Check if this is the new chunked format by looking for magic number
-        const MAGIC_CHUNKED = 0x444F4743; // "DOGC" = DOGbox Chunked
-        const view = new DataView(data.buffer, data.byteOffset);
-        let numChunks = 1;
-        let isChunked = false;
+            // Track which blocks to show as we progress
+            let currentBlockIndex = 0;
 
-        // Check for magic number in first 4 bytes
-        if (data.length >= 8) {
-            const magic = view.getUint32(0, true);
-            if (magic === MAGIC_CHUNKED) {
-                numChunks = view.getUint32(4, true);
-                isChunked = true;
+            // Check if this is the new chunked format by looking for magic number
+            const MAGIC_CHUNKED = 0x444F4743; // "DOGC" = DOGbox Chunked
+            const view = new DataView(data.buffer, data.byteOffset);
+            let numChunks = 1;
+            let isChunked = false;
+
+            // Check for magic number in first 4 bytes
+            if (data.length >= 8) {
+                const magic = view.getUint32(0, true);
+                if (magic === MAGIC_CHUNKED) {
+                    numChunks = view.getUint32(4, true);
+                    isChunked = true;
+                    console.log('[DogboxCrypto] Detected chunked format with', numChunks, 'chunks');
+                } else {
+                    console.log('[DogboxCrypto] Single-chunk (legacy) format detected');
+                }
+            } else {
+                console.log('[DogboxCrypto] Data too small for chunked format, using legacy decryption');
             }
-        }
 
         let decryptedChunks = [];
         let totalDecryptedSize = 0;
@@ -441,31 +501,41 @@ class DogboxCrypto {
             let offset = 8; // Skip magic number (4) and chunk count (4)
 
             for (let i = 0; i < numChunks; i++) {
-                // Read chunk size
-                const chunkSize = view.getUint32(offset, true);
-                offset += 4;
+                try {
+                    console.log(`[DogboxCrypto] Decrypting chunk ${i + 1}/${numChunks}...`);
 
-                // Read chunk data (IV + ciphertext)
-                const chunkData = data.slice(offset, offset + chunkSize);
-                offset += chunkSize;
+                    // Read chunk size
+                    const chunkSize = view.getUint32(offset, true);
+                    offset += 4;
+                    console.log(`[DogboxCrypto] Chunk ${i + 1} size:`, chunkSize, 'bytes');
 
-                // Extract IV and ciphertext
-                const iv = chunkData.slice(0, 12);
-                const ciphertext = chunkData.slice(12);
+                    // Read chunk data (IV + ciphertext)
+                    const chunkData = data.slice(offset, offset + chunkSize);
+                    offset += chunkSize;
 
-                // Decrypt chunk
-                const decrypted = await crypto.subtle.decrypt(
-                    {
-                        name: 'AES-GCM',
-                        iv: iv,
-                        tagLength: 128
-                    },
-                    hybridKey.aesKey,
-                    ciphertext
-                );
+                    // Extract IV and ciphertext
+                    const iv = chunkData.slice(0, 12);
+                    const ciphertext = chunkData.slice(12);
+                    console.log(`[DogboxCrypto] Chunk ${i + 1} IV:`, iv.length, 'bytes, ciphertext:', ciphertext.length, 'bytes');
 
-                decryptedChunks.push(new Uint8Array(decrypted));
-                totalDecryptedSize += decrypted.byteLength;
+                    // Decrypt chunk
+                    const decrypted = await crypto.subtle.decrypt(
+                        {
+                            name: 'AES-GCM',
+                            iv: iv,
+                            tagLength: 128
+                        },
+                        hybridKey.aesKey,
+                        ciphertext
+                    );
+
+                    decryptedChunks.push(new Uint8Array(decrypted));
+                    totalDecryptedSize += decrypted.byteLength;
+                    console.log(`[DogboxCrypto] Chunk ${i + 1} decrypted successfully, size:`, decrypted.byteLength, 'bytes');
+                } catch (chunkError) {
+                    console.error(`[DogboxCrypto] Failed to decrypt chunk ${i + 1}:`, chunkError);
+                    throw new Error(`Chunk ${i + 1} decryption failed: ${chunkError.message}`);
+                }
 
                 // Calculate progress
                 const percentage = ((i + 1) / numChunks) * 100;
@@ -542,6 +612,16 @@ class DogboxCrypto {
             }
 
             return decrypted;
+        }
+        } catch (error) {
+            console.error('[DogboxCrypto] decryptFileWithProgress failed:', error);
+            console.error('[DogboxCrypto] Error details:', {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+                dataSize: encryptedData ? encryptedData.byteLength : 'null'
+            });
+            throw error;
         }
     }
 

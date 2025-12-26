@@ -1,5 +1,7 @@
 # dogbox.moe 🐕🐾🦴💨
 
+## UPDATE: I am not hosting this!! expensive. $50/mo due to model. feel free to self host. ping me if u want the domain :)
+
 privacy focused catbox.moe alternative. data privacy model similar to signal
 
 e2e encryption and post quantum crypto
